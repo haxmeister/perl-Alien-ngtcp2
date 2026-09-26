@@ -6,6 +6,14 @@ Perl distributions.
 It is deliberately independent of any Perl QUIC implementation, HTTP/3
 implementation, TLS backend, or event loop.
 
+## Compatibility
+
+Alien::ngtcp2 targets Perl 5.16 and newer.
+
+The source-build path is tested on Linux and macOS, with Windows using the
+standard Alien::Build CMake integration. The bundled native library requires a
+C11-capable compiler.
+
 ## Behavior
 
 If pkg-config can find libngtcp2 1.25.0 or newer, Alien::ngtcp2 uses that
