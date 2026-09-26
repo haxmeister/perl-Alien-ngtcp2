@@ -14,7 +14,7 @@ WriteMakefile(
         ABSTRACT_FROM    => 'lib/Alien/ngtcp2.pm',
         AUTHOR           => 'Joshua S. Day <haxmeister@hotmail.com>',
         LICENSE          => 'mit',
-        MIN_PERL_VERSION => '5.016',
+        MIN_PERL_VERSION => '5.020',
 
         CONFIGURE_REQUIRES => {
             'Alien::Build::MM' => '2.88',
@@ -26,8 +26,6 @@ WriteMakefile(
 
         PREREQ_PM => {
             'Alien::Base' => '2.88',
-            'HTTP::Tiny'   => '0.044',
-            'URI'          => 0,
         },
 
         TEST_REQUIRES => {
