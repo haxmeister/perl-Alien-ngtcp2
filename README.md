@@ -8,11 +8,11 @@ implementation, TLS backend, or event loop.
 
 ## Compatibility
 
-Alien::ngtcp2 targets Perl 5.16 and newer.
+Alien::ngtcp2 targets Perl 5.20 and newer.
 
-The source-build path is tested on Linux and macOS, with Windows using the
-standard Alien::Build CMake integration. The bundled native library requires a
-C11-capable compiler.
+The source-build path is tested across a broad Perl version range on Linux and
+macOS. Windows uses the standard Alien::Build CMake integration. The bundled
+native library requires a C11-capable compiler.
 
 ## Behavior
 
