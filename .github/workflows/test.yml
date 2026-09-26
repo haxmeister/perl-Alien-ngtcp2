@@ -1,0 +1,72 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    name: Linux Perl ${{ matrix.perl }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        perl:
+          - "5.36"
+          - "5.38"
+          - "5.40"
+          - "5.42"
+          - "5.44"
+
+    env:
+      ALIEN_INSTALL_TYPE: share
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+          enable-modules-cache: false
+
+      - name: Install Perl dependencies
+        run: cpanm --notest --installdeps .
+
+      - name: Configure
+        run: perl Makefile.PL
+
+      - name: Build
+        run: make
+
+      - name: Test
+        run: make test
+
+  macos:
+    name: macOS Perl 5.44
+    runs-on: macos-15
+
+    env:
+      ALIEN_INSTALL_TYPE: share
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.44"
+          enable-modules-cache: false
+
+      - name: Install Perl dependencies
+        run: cpanm --notest --installdeps .
+
+      - name: Configure
+        run: perl Makefile.PL
+
+      - name: Build
+        run: make
+
+      - name: Test
+        run: make test
