@@ -8,12 +8,13 @@ my $abmm = Alien::Build::MM->new;
 
 WriteMakefile(
     $abmm->mm_args(
-        NAME          => 'Alien::ngtcp2',
-        DISTNAME      => 'Alien-ngtcp2',
-        VERSION_FROM  => 'lib/Alien/ngtcp2.pm',
-        ABSTRACT_FROM => 'lib/Alien/ngtcp2.pm',
-        AUTHOR        => 'Joshua S. Day <haxmeister@hotmail.com>',
-        LICENSE       => 'mit',
+        NAME             => 'Alien::ngtcp2',
+        DISTNAME         => 'Alien-ngtcp2',
+        VERSION_FROM     => 'lib/Alien/ngtcp2.pm',
+        ABSTRACT_FROM    => 'lib/Alien/ngtcp2.pm',
+        AUTHOR           => 'Joshua S. Day <haxmeister@hotmail.com>',
+        LICENSE          => 'mit',
+        MIN_PERL_VERSION => '5.016',
 
         CONFIGURE_REQUIRES => {
             'Alien::Build::MM' => '2.88',
@@ -28,7 +29,7 @@ WriteMakefile(
         },
 
         TEST_REQUIRES => {
-            'Test2::V0'  => 0,
+            'Test2::V0'   => 0,
             'Test::Alien' => '2.88',
         },
 
