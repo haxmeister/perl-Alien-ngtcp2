@@ -31,6 +31,16 @@ share {
             '%{make}',
             '%{make} install',
         ];
+
+        after 'gather' => sub {
+            my ($build) = @_;
+
+            for my $key (qw(cflags cflags_static)) {
+                my $value = $build->runtime_prop->{$key} || '';
+                $build->runtime_prop->{$key}
+                    = join ' ', grep { length } $value, '-DNGTCP2_STATICLIB';
+            }
+        };
     }
     else {
         plugin 'Build::Autoconf';
