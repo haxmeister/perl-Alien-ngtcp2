@@ -5,7 +5,7 @@ Revision history for Alien-ngtcp2
     - Discover libngtcp2 1.25.0 or newer through pkg-config.
     - Build a private static libngtcp2 1.25.0 when no suitable system
       installation is available.
-    - Support Perl 5.16 and newer.
+    - Support Perl 5.20 and newer.
     - Use the native Autoconf build on Unix-like systems and the standard
       Alien::Build CMake path on Windows.
     - Verify the result with a real XS compile and link test.
