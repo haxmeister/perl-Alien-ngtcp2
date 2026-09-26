@@ -22,12 +22,12 @@ WriteMakefile(
 
         BUILD_REQUIRES => {
             'Alien::Build::MM' => '2.88',
-            'HTTP::Tiny'       => '0.044',
-            'URI'              => 0,
         },
 
         PREREQ_PM => {
             'Alien::Base' => '2.88',
+            'HTTP::Tiny'   => '0.044',
+            'URI'          => 0,
         },
 
         TEST_REQUIRES => {
