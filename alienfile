@@ -13,11 +13,32 @@ share {
     ];
     plugin 'Download';
     plugin 'Extract' => 'tar.xz';
-    plugin 'Build::Autoconf';
 
-    build [
-        '%{configure} --enable-lib-only --disable-crypto --disable-shared --enable-static',
-        '%{make}',
-        '%{make} install',
-    ];
+    if ($^O eq 'MSWin32') {
+        plugin 'Build::CMake';
+
+        build [
+            [
+                '%{cmake}',
+                @{ meta->prop->{plugin_build_cmake}->{args} },
+                '-DENABLE_LIB_ONLY=ON',
+                '-DENABLE_SHARED_LIB=OFF',
+                '-DENABLE_STATIC_LIB=ON',
+                '-DENABLE_OPENSSL=OFF',
+                '-DBUILD_TESTING=OFF',
+                '%{.install.extract}',
+            ],
+            '%{make}',
+            '%{make} install',
+        ];
+    }
+    else {
+        plugin 'Build::Autoconf';
+
+        build [
+            '%{configure} --enable-lib-only --disable-crypto --disable-shared --enable-static',
+            '%{make}',
+            '%{make} install',
+        ];
+    }
 };
