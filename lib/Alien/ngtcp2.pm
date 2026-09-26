@@ -44,7 +44,7 @@ newer. Its fallback source build uses ngtcp2 1.25.0.
 
 =head1 PERL VERSION
 
-Alien::ngtcp2 requires Perl 5.16 or newer.
+Alien::ngtcp2 requires Perl 5.20 or newer.
 
 =head1 METHODS
 
