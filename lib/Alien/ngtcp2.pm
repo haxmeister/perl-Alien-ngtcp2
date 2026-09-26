@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use parent 'Alien::Base';
 
-our $VERSION = '0.001';
+our $VERSION = '0.01';
 
 1;
 
@@ -41,6 +41,10 @@ at the same path after installation.
 
 This release accepts system installations of C<libngtcp2> version 1.25.0 or
 newer. Its fallback source build uses ngtcp2 1.25.0.
+
+=head1 PERL VERSION
+
+Alien::ngtcp2 requires Perl 5.16 or newer.
 
 =head1 METHODS
 
