@@ -111,7 +111,7 @@ jobs:
           - "5.20"
           - "5.28"
           - "5.36"
-          - "5.44"
+          - "5.42"
 
     env:
       ALIEN_INSTALL_TYPE: share
