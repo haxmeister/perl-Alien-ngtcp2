@@ -31,6 +31,9 @@ jobs:
           perl-version: ${{ matrix.perl }}
           enable-modules-cache: false
 
+      - name: Bootstrap Alien::Build
+        run: cpanm --notest Alien::Build::MM
+
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
@@ -58,6 +61,9 @@ jobs:
         with:
           perl-version: "5.44"
           enable-modules-cache: false
+
+      - name: Bootstrap Alien::Build
+        run: cpanm --notest Alien::Build::MM
 
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
