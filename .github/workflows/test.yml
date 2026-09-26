@@ -37,12 +37,13 @@ jobs:
         uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: ${{ matrix.perl }}
-          distribution: strawberry
-          install-modules: Alien::Build::MM
           enable-modules-cache: false
 
+      - name: Bootstrap Alien::Build
+        run: cpanm --notest Alien::Build::MM
+
       - name: Install Perl dependencies
-        run: cpanm --local-lib=local --notest --installdeps .
+        run: cpanm --notest --installdeps .
 
       - name: Configure
         run: perl Makefile.PL
@@ -94,7 +95,7 @@ jobs:
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
   windows:
-    name: Windows Perl ${{ matrix.perl }}
+    name: Windows Strawberry Perl ${{ matrix.perl }}
     runs-on: windows-2025
 
     strategy:
@@ -112,17 +113,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Perl
+      - name: Set up Strawberry Perl
         uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: ${{ matrix.perl }}
+          distribution: strawberry
+          install-modules: Alien::Build::MM
           enable-modules-cache: false
 
-      - name: Bootstrap Alien::Build
-        run: cpanm --notest Alien::Build::MM
-
       - name: Install Perl dependencies
-        run: cpanm --notest --installdeps .
+        run: cpanm --local-lib=local --notest --installdeps .
 
       - name: Configure
         run: perl Makefile.PL
