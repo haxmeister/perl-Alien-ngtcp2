@@ -8,8 +8,9 @@ plugin 'PkgConfig' => (
 share {
     start_url 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.25.0/ngtcp2-1.25.0.tar.xz';
 
-    digest SHA256 => '2a34d2484ba17847a5d11965704e9dd0fac4c6d8efc75ffe1ec7de66d8c6b6fb';
-
+    plugin 'Digest' => [
+        SHA256 => '2a34d2484ba17847a5d11965704e9dd0fac4c6d8efc75ffe1ec7de66d8c6b6fb',
+    ];
     plugin 'Download';
     plugin 'Extract' => 'tar.xz';
     plugin 'Build::Autoconf';
