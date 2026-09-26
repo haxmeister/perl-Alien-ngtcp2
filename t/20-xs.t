@@ -40,7 +40,8 @@ alien_ngtcp2_version(void)
 MODULE = TA_MODULE PACKAGE = TA_MODULE
 
 const char *
-ngtcp2_version()
+ngtcp2_version(class)
+    const char *class
     CODE:
         RETVAL = alien_ngtcp2_version();
     OUTPUT:
