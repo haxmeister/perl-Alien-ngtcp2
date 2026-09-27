@@ -49,6 +49,9 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+
       - name: Configure
         env:
           ALIEN_INSTALL_TYPE: share
@@ -107,6 +110,9 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+
       - name: Configure
         env:
           ALIEN_INSTALL_TYPE: share
@@ -148,6 +154,9 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+
       - name: Configure
         env:
           ALIEN_INSTALL_TYPE: share
@@ -186,6 +195,9 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --local-lib=local --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --local-lib=local --notest Alien::OpenSSL Alien::cmake3 URI
+
       - name: Configure
         env:
           ALIEN_INSTALL_TYPE: share
@@ -218,6 +230,9 @@ jobs:
 
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
+
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
 
       - name: Verify Alien::Build version
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
@@ -254,6 +269,9 @@ jobs:
 
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
+
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
 
       - name: Verify Alien::Build version
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
