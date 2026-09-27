@@ -65,13 +65,24 @@ jobs:
       - name: Build
         env:
           ALIEN_INSTALL_TYPE: share
-          ALIEN_NGTCP2_CRYPTO: picotls
+          ALIEN_NGTCP2_CRYPTO: auto
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Verify Picotls default
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: auto
+        run: |
+          perl -Iblib/lib -MAlien::ngtcp2 -e '
+            die "expected picotls backend, got "
+              . (Alien::ngtcp2->crypto_backend // "<undef>") . "\n"
+              unless Alien::ngtcp2->crypto_backend eq "picotls";
+          '
 
       - name: Test
         env:
           ALIEN_INSTALL_TYPE: share
-          ALIEN_NGTCP2_CRYPTO: picotls
+          ALIEN_NGTCP2_CRYPTO: auto
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
       - name: Distribution test
@@ -348,7 +359,7 @@ jobs:
 
 
   system-openssl-picotls:
-    name: Reuse system OpenSSL for Picotls fallback
+    name: Use pre-3.5 system OpenSSL through Picotls
     runs-on: ubuntu-24.04
 
     steps:
@@ -371,10 +382,10 @@ jobs:
       - name: Install non-OpenSSL fallback build dependencies
         run: cpanm --notest Alien::cmake3 URI
 
-      - name: Configure with system OpenSSL
+      - name: Configure with automatic provider selection
         env:
           ALIEN_INSTALL_TYPE: share
-          ALIEN_NGTCP2_CRYPTO: picotls
+          ALIEN_NGTCP2_CRYPTO: auto
         run: |
           perl Makefile.PL 2>&1 | tee configure.log
           if grep -q "prerequisite Alien::OpenSSL .* not found" configure.log; then
@@ -385,13 +396,112 @@ jobs:
       - name: Build
         env:
           ALIEN_INSTALL_TYPE: share
-          ALIEN_NGTCP2_CRYPTO: picotls
+          ALIEN_NGTCP2_CRYPTO: auto
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Verify Picotls compatibility fallback
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: auto
+        run: |
+          perl -Iblib/lib -MAlien::ngtcp2 -e '
+            die "expected picotls backend, got "
+              . (Alien::ngtcp2->crypto_backend // "<undef>") . "\n"
+              unless Alien::ngtcp2->crypto_backend eq "picotls";
+          '
 
       - name: Test
         env:
           ALIEN_INSTALL_TYPE: share
-          ALIEN_NGTCP2_CRYPTO: picotls
+          ALIEN_NGTCP2_CRYPTO: auto
+        run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+
+  native-openssl:
+    name: Use OpenSSL 3.5+ native provider
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config
+
+      - name: Build OpenSSL 3.5.7
+        run: |
+          cd "${RUNNER_TEMP}"
+          curl -L --fail --retry 3 \
+            https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz \
+            -o openssl-3.5.7.tar.gz
+          curl -L --fail --retry 3 \
+            https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz.sha256 \
+            -o openssl-3.5.7.tar.gz.sha256
+          sha256sum -c openssl-3.5.7.tar.gz.sha256
+          tar -xzf openssl-3.5.7.tar.gz
+          cd openssl-3.5.7
+          ./Configure \
+            --prefix="${RUNNER_TEMP}/openssl-3.5.7-install" \
+            --libdir=lib \
+            shared
+          make -j2
+          make install_sw
+
+      - name: Select OpenSSL 3.5.7
+        run: |
+          echo "PKG_CONFIG_PATH=${RUNNER_TEMP}/openssl-3.5.7-install/lib/pkgconfig" >> "${GITHUB_ENV}"
+          echo "LD_LIBRARY_PATH=${RUNNER_TEMP}/openssl-3.5.7-install/lib:${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
+          echo "OPENSSL_ROOT_DIR=${RUNNER_TEMP}/openssl-3.5.7-install" >> "${GITHUB_ENV}"
+          echo "${RUNNER_TEMP}/openssl-3.5.7-install/bin" >> "${GITHUB_PATH}"
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.44"
+          enable-modules-cache: false
+
+      - name: Install Perl build dependencies
+        run: |
+          cpanm --notest Alien::Build::MM
+          cpanm --notest Alien::cmake3 URI
+
+      - name: Verify selected OpenSSL
+        run: |
+          test "$(pkg-config --modversion openssl)" = "3.5.7"
+
+      - name: Configure with automatic provider selection
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: auto
+        run: |
+          perl Makefile.PL 2>&1 | tee configure.log
+          if grep -q "prerequisite Alien::OpenSSL .* not found" configure.log; then
+            echo "Alien::OpenSSL was incorrectly required despite OpenSSL 3.5.7"
+            exit 1
+          fi
+
+      - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: auto
+        run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Verify native OpenSSL backend
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: auto
+        run: |
+          perl -Iblib/lib -MAlien::ngtcp2 -e '
+            die "expected openssl backend, got "
+              . (Alien::ngtcp2->crypto_backend // "<undef>") . "\n"
+              unless Alien::ngtcp2->crypto_backend eq "openssl";
+          '
+
+      - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: auto
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
 

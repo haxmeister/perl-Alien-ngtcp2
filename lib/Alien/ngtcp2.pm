@@ -93,11 +93,16 @@ The automatic system preference order is:
   libngtcp2_crypto_wolfssl
   libngtcp2_crypto_picotls
 
-If no complete system pair is available, Alien::ngtcp2 builds the matching
-ngtcp2 crypto integration from source. A host with a suitable GnuTLS
-installation can use C<libngtcp2_crypto_gnutls>. Otherwise the normal fallback
-builds ngtcp2 1.25.0 with the exact Picotls revision tested by that ngtcp2
-release.
+Alien::ngtcp2 prefers a suitable TLS implementation already present on the
+host. If no complete ngtcp2/provider pair is installed, OpenSSL 3.5 or newer
+can be used to build C<libngtcp2_crypto_ossl>, and GnuTLS 3.7.5 or newer can
+be used to build C<libngtcp2_crypto_gnutls>.
+
+Picotls is the compatibility fallback. It is used with an existing OpenSSL
+1.1.1 through 3.4 installation, where OpenSSL itself is usable but does not
+provide the native QUIC TLS API required by C<libngtcp2_crypto_ossl>. If no
+suitable host TLS stack exists, L<Alien::OpenSSL> can provide the private
+OpenSSL used by Picotls.
 
 Picotls uses OpenSSL for cryptographic and X.509 operations but does not
 require OpenSSL's QUIC TLS API. On Unix-like systems a suitable system OpenSSL
