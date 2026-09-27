@@ -34,6 +34,16 @@ sub _pkg_config_has {
     ) == 0;
 }
 
+sub _cmake_path {
+    my ($path) = @_;
+
+    return $path if !defined $path;
+
+    $path =~ s{\\}{/}g if $^O eq 'MSWin32';
+
+    return $path;
+}
+
 sub _windows_openssl_root {
     return if $^O ne 'MSWin32';
 
@@ -258,14 +268,19 @@ share {
                 die "No usable Windows OpenSSL development tree was found\n"
                     if !defined($root) || !length($root);
 
-                my $include = File::Spec->catdir(
-                    $root,
-                    'include',
+                my $include = _cmake_path(
+                    File::Spec->catdir(
+                        $root,
+                        'include',
+                    )
                 );
-                my $lib = File::Spec->catdir(
-                    $root,
-                    'lib',
+                my $lib = _cmake_path(
+                    File::Spec->catdir(
+                        $root,
+                        'lib',
+                    )
                 );
+                $root = _cmake_path($root);
 
                 push @openssl_root,
                     "-DOPENSSL_ROOT_DIR=$root";
@@ -335,12 +350,19 @@ share {
             die "Picotls core static library was not installed\n"
                 if !defined $picotls_core;
 
-            my $picotls_include = File::Spec->catdir(
-                $prefix,
-                'include',
+            my $picotls_include = _cmake_path(
+                File::Spec->catdir(
+                    $prefix,
+                    'include',
+                )
             );
-            my $picotls_libraries
-                = join ';', $picotls_openssl, $picotls_core;
+            my $picotls_openssl_cmake
+                = _cmake_path($picotls_openssl);
+            my $picotls_core_cmake
+                = _cmake_path($picotls_core);
+            my $picotls_libraries = join ';',
+                $picotls_openssl_cmake,
+                $picotls_core_cmake;
 
             @backend_args = (
                 '-DENABLE_OPENSSL=OFF',
@@ -356,7 +378,9 @@ share {
             );
 
             $build->runtime_prop->{my_picotls_libs}
-                = join ' ', $picotls_openssl, $picotls_core;
+                = join ' ',
+                    _cmake_path($picotls_openssl),
+                    _cmake_path($picotls_core);
             $build->runtime_prop->{my_openssl_cflags}
                 = $openssl_cflags;
             $build->runtime_prop->{my_openssl_libs}
