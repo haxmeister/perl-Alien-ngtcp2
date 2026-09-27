@@ -61,7 +61,7 @@ __END__
 
 =head1 NAME
 
-Alien::ngtcp2 - Find or build ngtcp2 with a usable QUIC crypto provider
+Alien::ngtcp2 - Find or build the native libraries needed for QUIC
 
 =head1 SYNOPSIS
 
@@ -76,95 +76,98 @@ Alien::ngtcp2 - Find or build ngtcp2 with a usable QUIC crypto provider
 
 =head1 DESCRIPTION
 
-Alien::ngtcp2 provides C<libngtcp2> and a usable ngtcp2 QUIC crypto helper.
+Alien::ngtcp2 supplies the native ngtcp2 libraries needed by Perl QUIC
+distributions.
 
-The inherited C<cflags> and C<libs> methods continue to describe the core
-C<libngtcp2> library. This preserves the interface provided by version 0.01.
+QUIC needs two native pieces:
 
-At installation time Alien::ngtcp2 first looks for a compatible system
-C<libngtcp2> together with one of its crypto helpers. If such a pair is
-available, it is reused.
+=over 4
 
-The automatic system preference order is:
+=item * C<libngtcp2>, which handles the QUIC protocol
 
-  libngtcp2_crypto_ossl
-  libngtcp2_crypto_gnutls
-  libngtcp2_crypto_boringssl
-  libngtcp2_crypto_wolfssl
-  libngtcp2_crypto_picotls
+=item * an ngtcp2 TLS helper, which connects ngtcp2 to a TLS library
 
-Alien::ngtcp2 prefers a suitable TLS implementation already present on the
-host. If no complete ngtcp2/provider pair is installed, OpenSSL 3.5 or newer
-can be used to build C<libngtcp2_crypto_ossl>, and GnuTLS 3.7.5 or newer can
-be used to build C<libngtcp2_crypto_gnutls>.
+=back
 
-Picotls is the compatibility fallback. It is used with an existing OpenSSL
-1.1.1 through 3.4 installation, where OpenSSL itself is usable but does not
-provide the native QUIC TLS API required by C<libngtcp2_crypto_ossl>. If no
-suitable host TLS stack exists, L<Alien::OpenSSL> can provide the private
-OpenSSL used by Picotls.
+Most users do not need to choose a TLS library. Alien::ngtcp2 checks the
+machine and uses a suitable one automatically.
 
-Picotls uses OpenSSL for cryptographic and X.509 operations but does not
-require OpenSSL's QUIC TLS API. On Unix-like systems a suitable system OpenSSL
-1.1.1 or newer is used directly. L<Alien::OpenSSL> is required only when no
-usable system OpenSSL development installation is available, in which case it
-can provide a private fallback.
+The original C<cflags> and C<libs> methods still describe only the core
+C<libngtcp2> library. This keeps the interface from version 0.01 working.
 
-On Windows the fallback uses the OpenSSL development tree belonging to the
-active Perl/compiler toolchain. Picotls requires OpenSSL 1.1.1 or newer.
-Older Windows toolchains are rejected with a clear diagnostic rather than
-having their TLS installation silently replaced. Strawberry Perl 5.30 and
-newer meet this baseline; Strawberry Perl 5.28 contains OpenSSL 1.1.0j and is
-too old for the fallback.
+=head1 HOW INSTALLATION WORKS
 
-Alien::ngtcp2 never replaces or upgrades the operating system TLS library.
+If a compatible C<libngtcp2> and TLS helper are already installed,
+Alien::ngtcp2 uses them.
 
-=head1 UPSTREAM VERSION
+If ngtcp2 must be built from source, Alien::ngtcp2 tries to use TLS software
+already on the machine:
 
-This release accepts compatible system C<libngtcp2> and crypto helper
-installations at version 1.25.0 or newer. Its source builds use ngtcp2
-1.25.0.
+=over 4
 
-=head1 PERL VERSION
+=item 1. OpenSSL 3.5 or newer
 
-Alien::ngtcp2 requires Perl 5.20 or newer.
+Build the ngtcp2 OpenSSL helper.
 
-The Perl version requirement is independent of the native TLS requirement.
-For example, Perl 5.28 works with a current native toolchain even though the
-historical Strawberry Perl 5.28 distribution bundles an OpenSSL release that
-is too old for the Picotls fallback.
+=item 2. Otherwise, GnuTLS 3.7.5 or newer
+
+Build the ngtcp2 GnuTLS helper.
+
+=item 3. Otherwise, OpenSSL 1.1.1 through 3.4
+
+Use Picotls with that existing OpenSSL.
+
+=item 4. No suitable TLS library on Unix
+
+L<Alien::OpenSSL> can provide a private OpenSSL for the Picotls fallback.
+
+=back
+
+Alien::ngtcp2 does not replace or upgrade the operating system TLS library.
+
+=head2 Windows
+
+On Windows the fallback uses the OpenSSL that belongs to the active Perl and
+compiler toolchain.
+
+If that OpenSSL is older than 1.1.1, installation stops with a clear error
+instead of silently installing a different TLS stack.
+
+Strawberry Perl 5.30 and newer meet this requirement. Historical Strawberry
+Perl 5.28 contains OpenSSL 1.1.0j and is too old for the fallback.
 
 =head1 METHODS
 
 =head2 cflags
 
+Returns compiler flags for the core C<libngtcp2> library.
+
 =head2 libs
 
-The inherited L<Alien::Base> methods describe core C<libngtcp2> only.
+Returns linker flags for the core C<libngtcp2> library.
 
 =head2 crypto_backend
 
-Returns the selected crypto backend name, such as C<openssl>, C<gnutls>,
+Returns the selected TLS backend name, such as C<openssl>, C<gnutls>,
 C<boringssl>, C<wolfssl>, or C<picotls>.
 
 =head2 crypto_package
 
-Returns the selected ngtcp2 crypto helper pkg-config package name.
+Returns the pkg-config package name for the selected ngtcp2 TLS helper.
 
 =head2 crypto_cflags
 
-Returns the compiler flags needed by a consumer of the selected crypto helper.
+Returns the compiler flags needed to use the selected ngtcp2 TLS helper.
 
 =head2 crypto_libs
 
-Returns the linker flags needed by a consumer of the selected crypto helper
-and its TLS implementation.
+Returns the linker flags needed to use the selected ngtcp2 TLS helper.
 
 =head1 BACKEND OVERRIDE
 
-Most users should allow automatic selection.
+Most users should let Alien::ngtcp2 choose automatically.
 
-Developers and packagers may set C<ALIEN_NGTCP2_CRYPTO> to C<auto> or one of:
+Packagers and developers may set C<ALIEN_NGTCP2_CRYPTO> to C<auto> or one of:
 
   openssl
   gnutls
@@ -172,22 +175,27 @@ Developers and packagers may set C<ALIEN_NGTCP2_CRYPTO> to C<auto> or one of:
   wolfssl
   picotls
 
-An explicit backend choice first uses a matching system C<libngtcp2> crypto
-helper when available. C<gnutls> and C<openssl> can also build the matching
-ngtcp2 helper when a suitable raw system TLS library is present. C<picotls>
-explicitly selects the portable source fallback.
+An explicit choice is mainly useful for testing and packaging.
 
-=head1 FALLBACK PICOTLS SOURCE
+=head1 VERSIONS
 
-The fallback contains the MIT-licensed Picotls TLS core and OpenSSL binding
-from commit:
+Alien::ngtcp2 requires Perl 5.20 or newer and Alien::Build 2.84 or newer.
+
+A system C<libngtcp2> must be version 1.25.0 or newer.
+
+The bundled ngtcp2 source is version 1.25.0.
+
+=head1 BUNDLED PICOTLS SOURCE
+
+The Picotls fallback contains the MIT-licensed Picotls TLS core and OpenSSL
+binding from commit:
 
   f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
 
-This is the Picotls revision documented by ngtcp2 1.25.0.
+That is the Picotls revision documented by ngtcp2 1.25.0.
 
 The Picotls minicrypto backend and its third-party dependencies are not
-included or built.
+included.
 
 =head1 SEE ALSO
 

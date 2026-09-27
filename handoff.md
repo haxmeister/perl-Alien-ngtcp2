@@ -8,7 +8,8 @@ Current release-ready version: 0.02
 
 Previous CPAN release: 0.01
 
-Release preparation PR: #5 (merged)
+Release preparation PRs: #5, #6, and #7 (merged)
+Final documentation/CI polish PR: #8
 
 ## Purpose of release 0.02
 
@@ -152,8 +153,8 @@ It then runs the same XS linkage test.
 
 ## CI status
 
-The adaptive-provider implementation merged to main only after the full matrix
-was green:
+The adaptive-provider implementation and host-TLS-first policy were validated
+with the full matrix:
 
 - Linux Perl 5.20 through 5.44;
 - macOS Perl 5.20, 5.28, 5.36, 5.44;
@@ -162,12 +163,14 @@ was green:
 - minimum Alien::Build 2.84 on Linux and Windows;
 - legacy Strawberry Perl 5.28 rejection diagnostic;
 - system GnuTLS provider reuse;
+- source-built GnuTLS helper;
+- OpenSSL before 3.5 using the Picotls compatibility fallback;
+- OpenSSL 3.5.7 using the native ngtcp2 OpenSSL helper;
 - downstream XS compile/link through crypto_cflags and crypto_libs.
 
-Release preparation added a dedicated source-GnuTLS fallback job. The final
-0.02 release matrix completed successfully with both system-provider reuse and
-source-built GnuTLS integration covered. The 0.02 disttest and CPANTS lint also
-passed.
+The 0.02 disttest and CPANTS lint passed before the final documentation polish.
+PR #8 reruns those release checks after simplifying the public documentation
+and correcting the general fallback CI matrix.
 
 ## Next steps
 
