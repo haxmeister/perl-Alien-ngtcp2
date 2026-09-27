@@ -12,7 +12,6 @@ t/00-load.t
 t/10-alien.t
 t/20-xs.t
 t/30-crypto-provider.t
-t/40-relocatable.t
 vendor/picotls/CMakeLists.txt
 vendor/picotls/NOTICE
 vendor/picotls/include/picotls.h
