@@ -35,10 +35,16 @@ share {
         after 'gather' => sub {
             my ($build) = @_;
 
+            my $compiler_type
+                = $build->meta_prop->{platform}->{compiler_type} || '';
+            my $define = $compiler_type eq 'microsoft'
+                ? '/DNGTCP2_STATICLIB'
+                : '-DNGTCP2_STATICLIB';
+
             for my $key (qw(cflags cflags_static)) {
                 my $value = $build->runtime_prop->{$key} || '';
                 $build->runtime_prop->{$key}
-                    = join ' ', grep { length } $value, '-DNGTCP2_STATICLIB';
+                    = join ' ', grep { length } $value, $define;
             }
         };
     }
