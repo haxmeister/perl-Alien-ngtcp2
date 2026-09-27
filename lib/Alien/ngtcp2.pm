@@ -61,10 +61,14 @@ L<https://github.com/ngtcp2/ngtcp2>
 
 Joshua S. Day
 
-=head1 LICENSE
+=head1 COPYRIGHT AND LICENSE
 
-MIT License
+This software is Copyright (c) 2026 by Joshua S. Day.
 
-Copyright (c) 2026 Joshua S. Day
+This is free software, licensed under:
+
+    The MIT (X11) License
+
+The full license text is included in the LICENSE file.
 
 =cut

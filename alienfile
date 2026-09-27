@@ -1,4 +1,4 @@
-use alienfile 2.88;
+use alienfile 2.84;
 
 plugin 'PkgConfig' => (
     pkg_name        => 'libngtcp2',

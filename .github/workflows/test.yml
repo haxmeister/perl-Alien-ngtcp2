@@ -64,6 +64,16 @@ jobs:
         if: matrix.perl == '5.44'
         run: perl -MConfig -e 'system($Config{make}, "disttest") == 0 or exit 1'
 
+      - name: Install CPANTS lint
+        if: matrix.perl == '5.44'
+        run: cpanm --notest App::CPANTS::Lint
+
+      - name: CPANTS lint
+        if: matrix.perl == '5.44'
+        run: |
+          perl -MConfig -e 'system($Config{make}, "dist") == 0 or exit 1'
+          cpants_lint.pl --verbose Alien-ngtcp2-*.tar.gz
+
   macos:
     name: macOS Perl ${{ matrix.perl }}
     runs-on: macos-15
@@ -171,6 +181,76 @@ jobs:
 
       - name: Install Perl dependencies
         run: cpanm --local-lib=local --notest --installdeps .
+
+      - name: Configure
+        run: perl Makefile.PL
+
+      - name: Build
+        run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Test
+        run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+
+  minimum-alien-build:
+    name: Alien::Build 2.84
+    runs-on: ubuntu-24.04
+
+    env:
+      ALIEN_INSTALL_TYPE: share
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.44"
+          enable-modules-cache: false
+
+      - name: Install Alien::Build 2.84
+        run: cpanm --notest https://cpan.metacpan.org/authors/id/P/PL/PLICEASE/Alien-Build-2.84.tar.gz
+
+      - name: Install Perl dependencies
+        run: cpanm --notest --installdeps .
+
+      - name: Verify Alien::Build version
+        run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
+
+      - name: Configure
+        run: perl Makefile.PL
+
+      - name: Build
+        run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Test
+        run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+
+  minimum-alien-build-windows:
+    name: Alien::Build 2.84 on Windows
+    runs-on: windows-2025
+
+    env:
+      ALIEN_INSTALL_TYPE: share
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.44"
+          enable-modules-cache: false
+
+      - name: Install Alien::Build 2.84
+        run: cpanm --notest https://cpan.metacpan.org/authors/id/P/PL/PLICEASE/Alien-Build-2.84.tar.gz
+
+      - name: Install Perl dependencies
+        run: cpanm --notest --installdeps .
+
+      - name: Verify Alien::Build version
+        run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
 
       - name: Configure
         run: perl Makefile.PL

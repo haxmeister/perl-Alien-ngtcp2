@@ -6,6 +6,9 @@ Revision history for Alien-ngtcp2
     - Build a private static libngtcp2 1.25.0 when no suitable system
       installation is available.
     - Support Perl 5.20 and newer.
+    - Require Alien::Build 2.84 or newer.
+    - Add contribution and security documentation.
+    - Add explicit META provides information.
     - Use the native Autoconf build on Unix-like systems and the standard
       Alien::Build CMake path on Windows.
     - Verify the result with a real XS compile and link test.
