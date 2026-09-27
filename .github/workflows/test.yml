@@ -347,6 +347,65 @@ jobs:
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
 
+  source-gnutls:
+    name: Build source GnuTLS provider
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install native GnuTLS development files
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgnutls28-dev pkg-config
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.44"
+          enable-modules-cache: false
+
+      - name: Bootstrap Alien::Build
+        run: cpanm --notest Alien::Build::MM
+
+      - name: Install Perl dependencies
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: gnutls
+        run: cpanm --notest --installdeps .
+
+      - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: gnutls
+        run: perl Makefile.PL
+
+      - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: gnutls
+        run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Verify GnuTLS source backend
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: gnutls
+        run: |
+          perl -Iblib/lib -MAlien::ngtcp2 -e '
+            die "expected share install\n"
+              unless Alien::ngtcp2->install_type eq "share";
+            die "expected gnutls backend, got "
+              . (Alien::ngtcp2->crypto_backend // "<undef>") . "\n"
+              unless Alien::ngtcp2->crypto_backend eq "gnutls";
+          '
+
+      - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: gnutls
+        run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+
   minimum-alien-build:
     name: Alien::Build 2.84
     runs-on: ubuntu-24.04
