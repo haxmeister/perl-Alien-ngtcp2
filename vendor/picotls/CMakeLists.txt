@@ -43,7 +43,7 @@ target_link_libraries(picotls-openssl
         ${CMAKE_DL_LIBS}
 )
 
-if(MSVC)
+if(WIN32)
     target_include_directories(picotls-core
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/lib"
@@ -52,8 +52,17 @@ if(MSVC)
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/lib"
     )
-    target_compile_definitions(picotls-core PRIVATE _WINDOWS)
-    target_compile_definitions(picotls-openssl PRIVATE _WINDOWS)
+    target_compile_definitions(
+        picotls-core
+        PRIVATE
+            _WINDOWS
+    )
+    target_compile_definitions(
+        picotls-openssl
+        PRIVATE
+            _WINDOWS
+            OPENSSL_NO_ASYNC
+    )
 endif()
 
 install(
@@ -66,3 +75,10 @@ install(
     DIRECTORY include/
     DESTINATION include
 )
+
+if(WIN32)
+    install(
+        FILES lib/wincompat.h
+        DESTINATION include
+    )
+endif()
