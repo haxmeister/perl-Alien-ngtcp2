@@ -71,8 +71,11 @@ Packagers and developers can set ALIEN_NGTCP2_CRYPTO to:
     wolfssl
     picotls
 
-Except for picotls, an explicit choice currently requires a matching system
-ngtcp2 crypto helper.
+An explicit choice first uses a matching system ngtcp2 crypto helper when one
+is available. The gnutls and openssl choices can also build the matching
+ngtcp2 helper when a suitable raw TLS library is already installed. The
+boringssl and wolfssl choices require a matching system helper. The picotls
+choice explicitly selects the portable Picotls/OpenSSL fallback.
 
 ## Compatibility
 
