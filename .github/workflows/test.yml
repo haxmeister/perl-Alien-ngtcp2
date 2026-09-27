@@ -33,8 +33,6 @@ jobs:
           - "5.42"
           - "5.44"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -51,17 +49,36 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
+
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
 
       - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
       - name: Distribution test
         if: matrix.perl == '5.44'
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}, "disttest") == 0 or exit 1'
 
       - name: Install CPANTS lint
@@ -87,8 +104,6 @@ jobs:
           - "5.36"
           - "5.44"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -105,13 +120,29 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
+
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
 
       - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
   windows:
@@ -127,8 +158,6 @@ jobs:
           - "5.36"
           - "5.44"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -145,13 +174,29 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
+
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
 
       - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
   strawberry:
@@ -162,11 +207,9 @@ jobs:
       fail-fast: false
       matrix:
         perl:
-          - "5.28"
+          - "5.30"
           - "5.42"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -182,11 +225,123 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --local-lib=local --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --local-lib=local --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --local-lib=local --notest Alien::OpenSSL
+
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: perl Makefile.PL
+
+      - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+
+  legacy-strawberry:
+    name: Legacy Strawberry TLS diagnostic
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Strawberry Perl 5.28
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.28"
+          distribution: strawberry
+          install-modules: Alien::Build::MM
+          enable-modules-cache: false
+
+      - name: Verify old bundled OpenSSL is rejected clearly
+        shell: pwsh
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: |
+          perl Makefile.PL *> legacy-configure.txt
+          if ($LASTEXITCODE -eq 0) {
+            Get-Content legacy-configure.txt
+            throw "legacy Strawberry unexpectedly configured successfully"
+          }
+          Get-Content legacy-configure.txt
+          if (-not (Select-String -Path legacy-configure.txt -Pattern "requires OpenSSL 1.1.1 or newer")) {
+            throw "expected OpenSSL compatibility diagnostic was not emitted"
+          }
+          exit 0
+
+
+  system-gnutls:
+    name: Reuse system GnuTLS provider
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set provider pkg-config path
+        run: |
+          echo "PKG_CONFIG_PATH=${RUNNER_TEMP}/ngtcp2-system/lib/pkgconfig" >> "${GITHUB_ENV}"
+          echo "LD_LIBRARY_PATH=${RUNNER_TEMP}/ngtcp2-system/lib:${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
+
+      - name: Install native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config libgnutls28-dev
+
+      - name: Build ngtcp2 1.25.0 with GnuTLS
+        run: |
+          curl -L --fail --retry 3             https://github.com/ngtcp2/ngtcp2/releases/download/v1.25.0/ngtcp2-1.25.0.tar.gz             -o "${RUNNER_TEMP}/ngtcp2-1.25.0.tar.gz"
+          echo "1c0843076528a87b65e9a9d455100941f4cb65d44f96c5da6ae56df146043955  ${RUNNER_TEMP}/ngtcp2-1.25.0.tar.gz"             | sha256sum -c -
+          tar -xzf "${RUNNER_TEMP}/ngtcp2-1.25.0.tar.gz" -C "${RUNNER_TEMP}"
+          cd "${RUNNER_TEMP}/ngtcp2-1.25.0"
+          ./configure             --prefix="${RUNNER_TEMP}/ngtcp2-system"             --enable-lib-only             --with-gnutls=yes             --with-openssl=no             --with-boringssl=no             --with-picotls=no             --with-wolfssl=no             --disable-cryptotest             --enable-shared             --enable-static
+          make -j2
+          make install
+          pkg-config --modversion libngtcp2
+          pkg-config --modversion libngtcp2_crypto_gnutls
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.44"
+          enable-modules-cache: false
+
+      - name: Install Perl dependencies
+        run: |
+          cpanm --notest Alien::Build::MM
+          cpanm --notest --installdeps .
+
+      - name: Configure for system provider
+        env:
+          ALIEN_INSTALL_TYPE: system
+          ALIEN_NGTCP2_CRYPTO: auto
         run: perl Makefile.PL
 
       - name: Build
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Verify GnuTLS was selected
+        run: |
+          perl -Iblib/lib -MAlien::ngtcp2 -e '
+            die "expected system install\n"
+              unless Alien::ngtcp2->install_type eq "system";
+            die "expected gnutls backend, got "
+              . (Alien::ngtcp2->crypto_backend // "<undef>") . "\n"
+              unless Alien::ngtcp2->crypto_backend eq "gnutls";
+          '
 
       - name: Test
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
@@ -196,8 +351,6 @@ jobs:
     name: Alien::Build 2.84
     runs-on: ubuntu-24.04
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -214,16 +367,32 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
+
       - name: Verify Alien::Build version
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
 
       - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
 
@@ -231,8 +400,6 @@ jobs:
     name: Alien::Build 2.84 on Windows
     runs-on: windows-2025
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -249,14 +416,30 @@ jobs:
       - name: Install Perl dependencies
         run: cpanm --notest --installdeps .
 
+      - name: Install fallback build dependencies
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
+
       - name: Verify Alien::Build version
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
 
       - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'

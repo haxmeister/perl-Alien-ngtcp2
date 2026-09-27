@@ -1,5 +1,18 @@
 Revision history for Alien-ngtcp2
 
+0.02_01  2026-09-27
+    - Add automatic selection of an installed ngtcp2 QUIC crypto provider.
+    - Preserve cflags and libs as the core libngtcp2 interface.
+    - Add crypto_backend, crypto_package, crypto_cflags, and crypto_libs.
+    - Add a pinned Picotls/OpenSSL share fallback when no complete system
+      ngtcp2 crypto provider is available.
+    - Reuse the host OpenSSL installation through Alien::OpenSSL on
+      Unix-like systems when possible instead of replacing or upgrading
+      the system TLS stack.
+    - Reuse the active Perl toolchain's OpenSSL on Windows and reject
+      pre-1.1.1 toolchains with an explicit compatibility diagnostic.
+    - Validate the crypto helper with a real downstream XS compile/link test.
+
 0.01  2026-09-26
     - Initial release.
     - Discover libngtcp2 1.25.0 or newer through pkg-config.
