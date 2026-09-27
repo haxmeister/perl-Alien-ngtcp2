@@ -3,7 +3,7 @@ use alienfile 2.84;
 use Config;
 use Cwd qw(abs_path);
 use File::Spec ();
-use IPC::Cmd qw(can_run);
+use IPC::Cmd qw(can_run run);
 
 my $minimum_version = '1.25.0';
 
@@ -123,6 +123,52 @@ sub _windows_openssl_root {
     return;
 }
 
+sub _windows_openssl_version {
+    my ($root) = @_;
+
+    return if !defined($root) || !length($root);
+
+    my $exe = File::Spec->catfile(
+        $root,
+        'bin',
+        'openssl.exe',
+    );
+    return if !-f $exe;
+
+    my ($stdout, $stderr) = ('', '');
+    my $ok = run(
+        command => [$exe, 'version'],
+        buffer  => \$stdout,
+        verbose => 0,
+    );
+
+    return if !$ok;
+
+    return $1
+        if $stdout =~ /OpenSSL\s+(\d+\.\d+\.\d+[a-z]*)/i;
+
+    return;
+}
+
+sub _windows_openssl_supported {
+    my ($version) = @_;
+
+    return 0 if !defined($version);
+
+    return 0
+        if $version !~ /\A(\d+)\.(\d+)\.(\d+)/;
+
+    my ($major, $minor, $patch) = ($1, $2, $3);
+
+    return 1 if $major > 1;
+    return 0 if $major < 1;
+
+    return 1 if $minor > 1;
+    return 0 if $minor < 1;
+
+    return $patch >= 1 ? 1 : 0;
+}
+
 sub _system_pair {
     my ($command, $backend) = @_;
 
@@ -137,6 +183,11 @@ sub _system_pair {
 }
 
 my $pkg_config = _pkg_config_command();
+my $windows_openssl_root = _windows_openssl_root();
+my $windows_openssl_version
+    = _windows_openssl_version($windows_openssl_root);
+my $windows_openssl_supported
+    = _windows_openssl_supported($windows_openssl_version);
 my $requested = $ENV{ALIEN_NGTCP2_CRYPTO};
 my $force_share
     = defined($ENV{ALIEN_INSTALL_TYPE})
@@ -160,6 +211,19 @@ if (defined $requested) {
 
     if ($force_share || !_system_pair($pkg_config, $backend)) {
         if ($backend eq 'picotls') {
+            if ($^O eq 'MSWin32'
+                && !$windows_openssl_supported) {
+                my $found = defined($windows_openssl_version)
+                    ? "OpenSSL $windows_openssl_version"
+                    : 'no usable OpenSSL development installation';
+
+                die "Picotls fallback requires OpenSSL 1.1.1 or newer; "
+                    . "found $found. Upgrade the Windows/Strawberry "
+                    . "toolchain or install a compatible ngtcp2 crypto "
+                    . "provider. Alien::ngtcp2 will not silently replace "
+                    . "the host TLS stack.\n";
+            }
+
             $source_backend = 'picotls';
         }
         elsif ($backend eq 'gnutls'
@@ -197,6 +261,20 @@ if (!defined $backend) {
         $source_backend = 'gnutls';
     }
     else {
+        if ($^O eq 'MSWin32'
+            && !$windows_openssl_supported) {
+            my $found = defined($windows_openssl_version)
+                ? "OpenSSL $windows_openssl_version"
+                : 'no usable OpenSSL development installation';
+
+            die "No usable QUIC TLS backend was found. The Picotls "
+                . "fallback requires OpenSSL 1.1.1 or newer; found "
+                . "$found. Upgrade the Windows/Strawberry toolchain "
+                . "or install a compatible ngtcp2 crypto provider. "
+                . "Alien::ngtcp2 will not silently replace the host "
+                . "TLS stack.\n";
+        }
+
         $backend = 'picotls';
         $source_backend = 'picotls';
     }
@@ -210,7 +288,7 @@ meta_prop->{my_source_backend} = $source_backend;
 meta_prop->{my_picotls_source}
     = File::Spec->rel2abs('vendor/picotls');
 meta_prop->{my_windows_openssl_root}
-    = _windows_openssl_root();
+    = $windows_openssl_root;
 
 plugin 'PkgConfig' => (
     pkg_name => [
