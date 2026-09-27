@@ -60,6 +60,10 @@ jobs:
       - name: Test
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
+      - name: Distribution test
+        if: matrix.perl == '5.44'
+        run: perl -MConfig -e 'system($Config{make}, "disttest") == 0 or exit 1'
+
   macos:
     name: macOS Perl ${{ matrix.perl }}
     runs-on: macos-15
