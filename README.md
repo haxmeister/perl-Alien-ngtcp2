@@ -28,9 +28,16 @@ If no complete system pair is present, the share build uses the Picotls
 revision tested by ngtcp2 1.25.0. That fallback uses OpenSSL for cryptographic
 and X.509 operations, but does not require OpenSSL 3.5's QUIC TLS API.
 
-OpenSSL is obtained through Alien::OpenSSL. Alien::OpenSSL first reuses an
-existing system installation and only supplies a private copy when the machine
-does not already provide one.
+On Unix-like systems, OpenSSL for the Picotls fallback is obtained through
+Alien::OpenSSL. Alien::OpenSSL first reuses an existing system installation
+and can provide a private copy when needed.
+
+On Windows, Alien::ngtcp2 deliberately uses the OpenSSL development tree that
+belongs to the active Perl/compiler toolchain. Picotls requires OpenSSL 1.1.1
+or newer. An older Windows toolchain is rejected with an explicit diagnostic
+rather than silently replacing its TLS installation. Strawberry Perl 5.30 and
+newer satisfy this baseline; Strawberry Perl 5.28 ships OpenSSL 1.1.0j and is
+therefore too old for the fallback.
 
 Alien::ngtcp2 never replaces or upgrades the operating system TLS library.
 
@@ -68,7 +75,9 @@ ngtcp2 crypto helper.
 ## Compatibility
 
 Alien::ngtcp2 targets Perl 5.20 and newer and requires Alien::Build 2.84 or
-newer.
+newer. Perl 5.28 remains supported; the Strawberry Perl 5.28 distribution is a
+separate compatibility exception because its bundled OpenSSL 1.1.0j is below
+ngtcp2's Picotls requirement.
 
 The bundled ngtcp2 version is 1.25.0.
 
