@@ -68,15 +68,16 @@ Expert override:
 
 ## Source fallback
 
-If no complete system ngtcp2/provider pair exists, a host with suitable raw
-GnuTLS can build ngtcp2 1.25.0 with libngtcp2_crypto_gnutls.
-
-Otherwise the normal portable source fallback builds:
+If no complete system ngtcp2/provider pair exists, the preferred portable
+source fallback uses a suitable OpenSSL 1.1.1 or newer installation to build:
 
     ngtcp2 1.25.0
     libngtcp2_crypto_picotls
     pinned Picotls commit
       f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
+
+If suitable OpenSSL is unavailable but suitable raw GnuTLS is present, the
+fallback instead builds ngtcp2 1.25.0 with libngtcp2_crypto_gnutls.
 
 Only the MIT-licensed Picotls TLS core and OpenSSL binding are vendored. The
 minicrypto dependency tree is not included.
