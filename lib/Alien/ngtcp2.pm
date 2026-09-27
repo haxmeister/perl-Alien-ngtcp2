@@ -4,7 +4,45 @@ use strict;
 use warnings;
 use parent 'Alien::Base';
 
-our $VERSION = '0.01';
+our $VERSION = '0.02_01';
+
+sub crypto_backend {
+    my ($class) = @_;
+
+    return $class->runtime_prop->{my_crypto_backend};
+}
+
+sub crypto_package {
+    my ($class) = @_;
+
+    return $class->runtime_prop->{my_crypto_package};
+}
+
+sub crypto_cflags {
+    my ($class) = @_;
+
+    return $class->alt($class->crypto_package)->cflags_static;
+}
+
+sub crypto_libs {
+    my ($class) = @_;
+
+    my $helper = $class->alt($class->crypto_package);
+
+    if ($class->crypto_backend eq 'picotls'
+        && $class->install_type eq 'share') {
+        my $picotls = $class->runtime_prop->{my_picotls_libs} || '';
+        my $openssl = $class->runtime_prop->{my_openssl_libs} || '';
+
+        return join ' ', grep { length }
+            $helper->libs,
+            $picotls,
+            $class->libs,
+            $openssl;
+    }
+
+    return $helper->libs_static;
+}
 
 1;
 
@@ -12,7 +50,7 @@ __END__
 
 =head1 NAME
 
-Alien::ngtcp2 - Find or build the ngtcp2 QUIC transport library
+Alien::ngtcp2 - Find or build ngtcp2 with a usable QUIC crypto provider
 
 =head1 SYNOPSIS
 
@@ -21,26 +59,46 @@ Alien::ngtcp2 - Find or build the ngtcp2 QUIC transport library
     my $cflags = Alien::ngtcp2->cflags;
     my $libs   = Alien::ngtcp2->libs;
 
+    my $backend       = Alien::ngtcp2->crypto_backend;
+    my $crypto_cflags = Alien::ngtcp2->crypto_cflags;
+    my $crypto_libs   = Alien::ngtcp2->crypto_libs;
+
 =head1 DESCRIPTION
 
-Alien::ngtcp2 provides the C<libngtcp2> native library for Perl distributions
-that need to compile or link against ngtcp2.
+Alien::ngtcp2 provides C<libngtcp2> and a usable ngtcp2 QUIC crypto helper.
 
-If a suitable system installation of C<libngtcp2> is available through
-pkg-config, it is used. Otherwise Alien::ngtcp2 downloads and builds a private
-copy of ngtcp2.
+The inherited C<cflags> and C<libs> methods continue to describe the core
+C<libngtcp2> library. This preserves the interface provided by version 0.01.
 
-The fallback build contains the core C<libngtcp2> transport library only. It
-does not provide ngtcp2 TLS crypto helper libraries, HTTP/3, or an event loop.
+At installation time Alien::ngtcp2 first looks for a compatible system
+C<libngtcp2> together with one of its crypto helpers. If such a pair is
+available, it is reused.
 
-The fallback build is static so that XS consumers can link the native library
-into their extension without depending on a private shared library remaining
-at the same path after installation.
+The automatic system preference order is:
+
+  libngtcp2_crypto_ossl
+  libngtcp2_crypto_gnutls
+  libngtcp2_crypto_boringssl
+  libngtcp2_crypto_wolfssl
+  libngtcp2_crypto_picotls
+
+If no complete system pair is available, Alien::ngtcp2 builds a private static
+ngtcp2 1.25.0 with the exact Picotls revision tested by that ngtcp2 release.
+Picotls uses OpenSSL for cryptographic and X.509 operations but does not require
+OpenSSL's QUIC TLS API.
+
+The fallback obtains OpenSSL through L<Alien::OpenSSL>. Alien::OpenSSL itself
+prefers an existing system OpenSSL installation. Therefore an ordinary machine
+that already uses OpenSSL continues to use that installation rather than
+receiving a competing TLS stack.
+
+Alien::ngtcp2 never replaces or upgrades the operating system TLS library.
 
 =head1 UPSTREAM VERSION
 
-This release accepts system installations of C<libngtcp2> version 1.25.0 or
-newer. Its fallback source build uses ngtcp2 1.25.0.
+This development release accepts compatible system C<libngtcp2> and crypto
+helper installations at version 1.25.0 or newer. Its fallback uses ngtcp2
+1.25.0.
 
 =head1 PERL VERSION
 
@@ -48,14 +106,66 @@ Alien::ngtcp2 requires Perl 5.20 or newer.
 
 =head1 METHODS
 
-Alien::ngtcp2 inherits the standard L<Alien::Base> interface, including
-C<cflags>, C<libs>, C<dynamic_libs>, C<install_type>, and C<version>.
+=head2 cflags
+
+=head2 libs
+
+The inherited L<Alien::Base> methods describe core C<libngtcp2> only.
+
+=head2 crypto_backend
+
+Returns the selected crypto backend name, such as C<openssl>, C<gnutls>,
+C<boringssl>, C<wolfssl>, or C<picotls>.
+
+=head2 crypto_package
+
+Returns the selected ngtcp2 crypto helper pkg-config package name.
+
+=head2 crypto_cflags
+
+Returns the compiler flags needed by a consumer of the selected crypto helper.
+
+=head2 crypto_libs
+
+Returns the linker flags needed by a consumer of the selected crypto helper
+and its TLS implementation.
+
+=head1 BACKEND OVERRIDE
+
+Most users should allow automatic selection.
+
+Developers and packagers may set C<ALIEN_NGTCP2_CRYPTO> to C<auto> or one of:
+
+  openssl
+  gnutls
+  boringssl
+  wolfssl
+  picotls
+
+An explicit non-Picotls choice currently requires a matching system
+C<libngtcp2> crypto helper. C<picotls> explicitly selects the private fallback.
+
+=head1 FALLBACK PICOTLS SOURCE
+
+The fallback contains the MIT-licensed Picotls TLS core and OpenSSL binding
+from commit:
+
+  f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
+
+This is the Picotls revision documented by ngtcp2 1.25.0.
+
+The Picotls minicrypto backend and its third-party dependencies are not
+included or built.
 
 =head1 SEE ALSO
 
 L<Alien::Base>
 
+L<Alien::OpenSSL>
+
 L<https://github.com/ngtcp2/ngtcp2>
+
+L<https://github.com/h2o/picotls>
 
 =head1 AUTHOR
 
@@ -68,7 +178,5 @@ This software is Copyright (c) 2026 by Joshua S. Day.
 This is free software, licensed under:
 
     The MIT (X11) License
-
-The full license text is included in the LICENSE file.
 
 =cut
