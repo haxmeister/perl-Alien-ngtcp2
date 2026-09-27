@@ -347,6 +347,54 @@ jobs:
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
 
+  system-openssl-picotls:
+    name: Reuse system OpenSSL for Picotls fallback
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install system OpenSSL development files
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.44"
+          enable-modules-cache: false
+
+      - name: Bootstrap Alien::Build
+        run: cpanm --notest Alien::Build::MM
+
+      - name: Install non-OpenSSL fallback build dependencies
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Configure with system OpenSSL
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: |
+          perl Makefile.PL 2>&1 | tee configure.log
+          if grep -q "prerequisite Alien::OpenSSL .* not found" configure.log; then
+            echo "Alien::OpenSSL was incorrectly required despite usable system OpenSSL"
+            exit 1
+          fi
+
+      - name: Build
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Test
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+
   source-gnutls:
     name: Build source GnuTLS provider
     runs-on: ubuntu-24.04
