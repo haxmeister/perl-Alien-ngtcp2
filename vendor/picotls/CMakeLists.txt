@@ -8,11 +8,17 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(OpenSSL 1.1.1 REQUIRED COMPONENTS Crypto)
 find_package(Threads REQUIRED)
 
-add_library(picotls-core STATIC
+set(PICOTLS_CORE_SOURCES
     lib/picotls.c
     lib/hpke.c
     lib/pembase64.c
 )
+
+if(WIN32)
+    list(APPEND PICOTLS_CORE_SOURCES lib/wintimeofday.c)
+endif()
+
+add_library(picotls-core STATIC ${PICOTLS_CORE_SOURCES})
 
 target_include_directories(picotls-core
     PUBLIC
