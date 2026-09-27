@@ -263,7 +263,7 @@ if (defined $requested) {
     }
 }
 elsif (!$force_share) {
-    for my $candidate (qw(picotls openssl gnutls boringssl wolfssl)) {
+    for my $candidate (qw(openssl gnutls boringssl wolfssl picotls)) {
         next if !_system_pair($pkg_config, $candidate);
 
         $backend = $candidate;
@@ -273,13 +273,17 @@ elsif (!$force_share) {
 }
 
 if (!defined $backend) {
-    if (_pkg_config_has($pkg_config, 'openssl', '1.1.1')) {
-        $backend = 'picotls';
-        $source_backend = 'picotls';
+    if (_pkg_config_has($pkg_config, 'openssl', '3.5.0')) {
+        $backend = 'openssl';
+        $source_backend = 'openssl';
     }
     elsif (_pkg_config_has($pkg_config, 'gnutls', '3.7.5')) {
         $backend = 'gnutls';
         $source_backend = 'gnutls';
+    }
+    elsif (_pkg_config_has($pkg_config, 'openssl', '1.1.1')) {
+        $backend = 'picotls';
+        $source_backend = 'picotls';
     }
     else {
         if ($^O eq 'MSWin32'
