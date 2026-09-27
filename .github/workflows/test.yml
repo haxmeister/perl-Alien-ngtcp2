@@ -101,7 +101,7 @@ jobs:
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
   windows:
-    name: Windows Strawberry Perl ${{ matrix.perl }}
+    name: Windows Perl ${{ matrix.perl }}
     runs-on: windows-2025
 
     strategy:
@@ -111,6 +111,44 @@ jobs:
           - "5.20"
           - "5.28"
           - "5.36"
+          - "5.44"
+
+    env:
+      ALIEN_INSTALL_TYPE: share
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+          enable-modules-cache: false
+
+      - name: Bootstrap Alien::Build
+        run: cpanm --notest Alien::Build::MM
+
+      - name: Install Perl dependencies
+        run: cpanm --notest --installdeps .
+
+      - name: Configure
+        run: perl Makefile.PL
+
+      - name: Build
+        run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Test
+        run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+  strawberry:
+    name: Strawberry Perl ${{ matrix.perl }}
+    runs-on: windows-2025
+
+    strategy:
+      fail-fast: false
+      matrix:
+        perl:
+          - "5.28"
           - "5.42"
 
     env:
