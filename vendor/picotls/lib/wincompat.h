@@ -2,10 +2,21 @@
 #define WINCOMPAT_H
 
 #include <stdint.h>
-#define ssize_t int
 #include <Winsock2.h>
 #include <ws2tcpip.h>
 #include <malloc.h>
+
+#ifdef __MINGW32__
+
+#include <sys/time.h>
+
+#ifndef strcasecmp
+#define strcasecmp _stricmp
+#endif
+
+#else
+
+#define ssize_t int
 
 #ifndef gettimeofday
 #define gettimeofday wintimeofday
@@ -17,9 +28,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 struct timezone {
-    int tz_minuteswest; /* minutes west of Greenwich */
-    int tz_dsttime;     /* type of DST correction */
+    int tz_minuteswest;
+    int tz_dsttime;
 };
 
 int wintimeofday(struct timeval *tv, struct timezone *tz);
@@ -29,9 +41,11 @@ int wintimeofday(struct timeval *tv, struct timezone *tz);
 #endif
 
 #ifdef __cplusplus
-} /* extern "C" */
+}
 #endif
 
 #endif
 
-#endif /* WINCOMPAT_H */
+#endif
+
+#endif
