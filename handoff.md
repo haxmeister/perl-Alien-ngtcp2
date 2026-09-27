@@ -45,15 +45,14 @@ backend-specific Perl objects.
 
 Automatic system preference order:
 
-1. libngtcp2_crypto_picotls
-2. libngtcp2_crypto_ossl
-3. libngtcp2_crypto_gnutls
-4. libngtcp2_crypto_boringssl
-5. libngtcp2_crypto_wolfssl
+1. libngtcp2_crypto_ossl
+2. libngtcp2_crypto_gnutls
+3. libngtcp2_crypto_boringssl
+4. libngtcp2_crypto_wolfssl
+5. libngtcp2_crypto_picotls
 
-Picotls is the preferred automatic backend because it is the most portable
-choice across Linux, macOS, and Windows and does not depend on OpenSSL's native
-QUIC TLS API.
+The automatic policy is host TLS first. Picotls is the compatibility fallback,
+not a replacement for a suitable TLS provider already present on the host.
 
 A system provider is accepted only together with libngtcp2 1.25.0 or newer.
 
@@ -68,16 +67,19 @@ Expert override:
 
 ## Source fallback
 
-If no complete system ngtcp2/provider pair exists, the preferred portable
-source fallback uses a suitable OpenSSL 1.1.1 or newer installation to build:
+If no complete system ngtcp2/provider pair exists:
 
-    ngtcp2 1.25.0
-    libngtcp2_crypto_picotls
-    pinned Picotls commit
-      f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
+1. OpenSSL 3.5 or newer builds libngtcp2_crypto_ossl.
+2. Otherwise GnuTLS 3.7.5 or newer builds libngtcp2_crypto_gnutls.
+3. Otherwise OpenSSL 1.1.1 through 3.4 uses the compatibility fallback:
 
-If suitable OpenSSL is unavailable but suitable raw GnuTLS is present, the
-fallback instead builds ngtcp2 1.25.0 with libngtcp2_crypto_gnutls.
+       ngtcp2 1.25.0
+       libngtcp2_crypto_picotls
+       pinned Picotls commit
+         f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
+
+4. If no suitable host TLS stack exists, Alien::OpenSSL supplies the private
+   OpenSSL used by the same Picotls fallback.
 
 Only the MIT-licensed Picotls TLS core and OpenSSL binding are vendored. The
 minicrypto dependency tree is not included.
