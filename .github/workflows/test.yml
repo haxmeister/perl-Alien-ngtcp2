@@ -50,7 +50,11 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Install fallback build dependencies
-        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
 
       - name: Configure
         env:
@@ -111,7 +115,11 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Install fallback build dependencies
-        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
 
       - name: Configure
         env:
@@ -155,7 +163,11 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Install fallback build dependencies
-        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
 
       - name: Configure
         env:
@@ -196,7 +208,11 @@ jobs:
         run: cpanm --local-lib=local --notest --installdeps .
 
       - name: Install fallback build dependencies
-        run: cpanm --local-lib=local --notest Alien::OpenSSL Alien::cmake3 URI
+        run: cpanm --local-lib=local --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --local-lib=local --notest Alien::OpenSSL
 
       - name: Configure
         env:
@@ -232,7 +248,11 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Install fallback build dependencies
-        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
 
       - name: Verify Alien::Build version
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
@@ -271,7 +291,11 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Install fallback build dependencies
-        run: cpanm --notest Alien::OpenSSL Alien::cmake3 URI
+        run: cpanm --notest Alien::cmake3 URI
+
+      - name: Install Unix OpenSSL fallback helper
+        if: runner.os != 'Windows'
+        run: cpanm --notest Alien::OpenSSL
 
       - name: Verify Alien::Build version
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
