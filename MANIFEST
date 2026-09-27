@@ -11,3 +11,4 @@ t/10-alien.t
 t/20-xs.t
 CONTRIBUTING.md
 SECURITY.md
+t/30-core-only.t
