@@ -1,7 +1,8 @@
 Revision history for Alien-ngtcp2
 
 0.02  2026-09-27
-    - Add automatic selection of an installed ngtcp2 QUIC crypto provider.
+    - Add automatic selection of an installed ngtcp2 QUIC crypto provider,
+      preferring Picotls as the cross-platform default.
     - Preserve cflags and libs as the core libngtcp2 interface.
     - Add crypto_backend, crypto_package, crypto_cflags, and crypto_libs.
     - Build against a suitable raw GnuTLS installation when no complete
