@@ -44,6 +44,25 @@ sub _cmake_path {
     return $path;
 }
 
+sub _cmake_generator_args {
+    return () if $^O ne 'MSWin32';
+
+    my $cc = lc($Config{cc} || '');
+    return () if $cc !~ /(?:gcc|mingw)/;
+
+    my @args = ('-G', 'MinGW Makefiles');
+    my $make = can_run($Config{make} || '')
+        || can_run('mingw32-make')
+        || can_run('gmake');
+
+    if (defined($make) && length($make)) {
+        push @args,
+            '-DCMAKE_MAKE_PROGRAM=' . _cmake_path($make);
+    }
+
+    return @args;
+}
+
 sub _windows_openssl_root {
     return if $^O ne 'MSWin32';
 
@@ -241,6 +260,7 @@ share {
             File::Spec->curdir,
             '.alien-ngtcp2-build',
         );
+        my @generator_args = _cmake_generator_args();
 
         my @backend_args = (
             '-DENABLE_OPENSSL=OFF',
@@ -316,6 +336,7 @@ share {
                 $cmake,
                 '-S', $picotls_source,
                 '-B', $picotls_build,
+                @generator_args,
                 "-DCMAKE_INSTALL_PREFIX=$prefix",
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
@@ -435,6 +456,7 @@ share {
             $cmake,
             '-S', File::Spec->curdir,
             '-B', $ngtcp2_build,
+            @generator_args,
             "-DCMAKE_INSTALL_PREFIX=$prefix",
             '-DCMAKE_BUILD_TYPE=Release',
             '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
