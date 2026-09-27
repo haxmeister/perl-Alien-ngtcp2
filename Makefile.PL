@@ -17,20 +17,20 @@ WriteMakefile(
         MIN_PERL_VERSION => '5.020',
 
         CONFIGURE_REQUIRES => {
-            'Alien::Build::MM' => '2.88',
+            'Alien::Build::MM' => '2.84',
         },
 
         BUILD_REQUIRES => {
-            'Alien::Build::MM' => '2.88',
+            'Alien::Build::MM' => '2.84',
         },
 
         PREREQ_PM => {
-            'Alien::Base' => '2.88',
+            'Alien::Base' => '2.84',
         },
 
         TEST_REQUIRES => {
             'Test2::V0'   => 0,
-            'Test::Alien' => '2.88',
+            'Test::Alien' => '2.84',
         },
 
         META_MERGE => {
