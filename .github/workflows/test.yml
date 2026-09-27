@@ -189,7 +189,7 @@ jobs:
       fail-fast: false
       matrix:
         perl:
-          - "5.28"
+          - "5.30"
           - "5.42"
 
 
@@ -225,6 +225,38 @@ jobs:
 
       - name: Test
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
+
+
+  legacy-strawberry:
+    name: Legacy Strawberry TLS diagnostic
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Strawberry Perl 5.28
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.28"
+          distribution: strawberry
+          install-modules: Alien::Build::MM
+          enable-modules-cache: false
+
+      - name: Verify old bundled OpenSSL is rejected clearly
+        shell: pwsh
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
+        run: |
+          perl Makefile.PL *> legacy-configure.txt
+          if ($LASTEXITCODE -eq 0) {
+            Get-Content legacy-configure.txt
+            throw "legacy Strawberry unexpectedly configured successfully"
+          }
+          Get-Content legacy-configure.txt
+          if (-not (Select-String -Path legacy-configure.txt -Pattern "requires OpenSSL 1.1.1 or newer")) {
+            throw "expected OpenSSL compatibility diagnostic was not emitted"
+          }
 
 
   minimum-alien-build:
