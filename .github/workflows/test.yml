@@ -64,6 +64,16 @@ jobs:
         if: matrix.perl == '5.44'
         run: perl -MConfig -e 'system($Config{make}, "disttest") == 0 or exit 1'
 
+      - name: Install CPANTS lint
+        if: matrix.perl == '5.44'
+        run: cpanm --notest App::CPANTS::Lint
+
+      - name: CPANTS lint
+        if: matrix.perl == '5.44'
+        run: |
+          perl -MConfig -e 'system($Config{make}, "dist") == 0 or exit 1'
+          cpants_lint.pl --verbose Alien-ngtcp2-*.tar.gz
+
   macos:
     name: macOS Perl ${{ matrix.perl }}
     runs-on: macos-15
