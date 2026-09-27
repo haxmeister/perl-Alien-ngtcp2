@@ -24,13 +24,15 @@ Alien::ngtcp2 reuses it. The current preference order is:
 4. wolfSSL
 5. Picotls
 
-If no complete system pair is present, the share build uses the Picotls
-revision tested by ngtcp2 1.25.0. That fallback uses OpenSSL for cryptographic
-and X.509 operations, but does not require OpenSSL 3.5's QUIC TLS API.
+If no complete system pair is present, Alien::ngtcp2 can build the matching
+ngtcp2 crypto integration against a suitable raw GnuTLS installation. If that
+is not the applicable host TLS path, the normal fallback uses the Picotls
+revision tested by ngtcp2 1.25.0.
 
-On Unix-like systems, OpenSSL for the Picotls fallback is obtained through
-Alien::OpenSSL. Alien::OpenSSL first reuses an existing system installation
-and can provide a private copy when needed.
+The Picotls fallback uses OpenSSL for cryptographic and X.509 operations, but
+does not require OpenSSL 3.5's QUIC TLS API. On Unix-like systems OpenSSL is
+obtained through Alien::OpenSSL. Alien::OpenSSL first reuses an existing
+system installation and can provide a private copy when needed.
 
 On Windows, Alien::ngtcp2 deliberately uses the OpenSSL development tree that
 belongs to the active Perl/compiler toolchain. Picotls requires OpenSSL 1.1.1
@@ -69,8 +71,11 @@ Packagers and developers can set ALIEN_NGTCP2_CRYPTO to:
     wolfssl
     picotls
 
-Except for picotls, an explicit choice currently requires a matching system
-ngtcp2 crypto helper.
+An explicit choice first uses a matching system ngtcp2 crypto helper when one
+is available. The gnutls and openssl choices can also build the matching
+ngtcp2 helper when a suitable raw TLS library is already installed. The
+boringssl and wolfssl choices require a matching system helper. The picotls
+choice explicitly selects the portable Picotls/OpenSSL fallback.
 
 ## Compatibility
 

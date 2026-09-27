@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use parent 'Alien::Base';
 
-our $VERSION = '0.02_01';
+our $VERSION = '0.02';
 
 sub crypto_backend {
     my ($class) = @_;
@@ -93,14 +93,16 @@ The automatic system preference order is:
   libngtcp2_crypto_wolfssl
   libngtcp2_crypto_picotls
 
-If no complete system pair is available, Alien::ngtcp2 builds a private static
-ngtcp2 1.25.0 with the exact Picotls revision tested by that ngtcp2 release.
-Picotls uses OpenSSL for cryptographic and X.509 operations but does not require
-OpenSSL's QUIC TLS API.
+If no complete system pair is available, Alien::ngtcp2 builds the matching
+ngtcp2 crypto integration from source. A host with a suitable GnuTLS
+installation can use C<libngtcp2_crypto_gnutls>. Otherwise the normal fallback
+builds ngtcp2 1.25.0 with the exact Picotls revision tested by that ngtcp2
+release.
 
-On Unix-like systems the fallback obtains OpenSSL through L<Alien::OpenSSL>.
-Alien::OpenSSL prefers an existing system installation and can provide a
-private copy when required.
+Picotls uses OpenSSL for cryptographic and X.509 operations but does not
+require OpenSSL's QUIC TLS API. On Unix-like systems this fallback obtains
+OpenSSL through L<Alien::OpenSSL>. Alien::OpenSSL prefers an existing system
+installation and can provide a private copy when required.
 
 On Windows the fallback uses the OpenSSL development tree belonging to the
 active Perl/compiler toolchain. Picotls requires OpenSSL 1.1.1 or newer.
@@ -113,8 +115,8 @@ Alien::ngtcp2 never replaces or upgrades the operating system TLS library.
 
 =head1 UPSTREAM VERSION
 
-This development release accepts compatible system C<libngtcp2> and crypto
-helper installations at version 1.25.0 or newer. Its fallback uses ngtcp2
+This release accepts compatible system C<libngtcp2> and crypto helper
+installations at version 1.25.0 or newer. Its source builds use ngtcp2
 1.25.0.
 
 =head1 PERL VERSION
