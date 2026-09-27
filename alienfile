@@ -48,6 +48,9 @@ sub _system_pair {
 
 my $pkg_config = _pkg_config_command();
 my $requested = $ENV{ALIEN_NGTCP2_CRYPTO};
+my $force_share
+    = defined($ENV{ALIEN_INSTALL_TYPE})
+    && $ENV{ALIEN_INSTALL_TYPE} eq 'share';
 
 if (defined $requested) {
     $requested = lc $requested;
@@ -65,16 +68,26 @@ if (defined $requested) {
     $backend = $requested;
     $crypto_package = $provider{$backend};
 
-    if (!_system_pair($pkg_config, $backend)) {
-        die "ALIEN_NGTCP2_CRYPTO=$backend requires the matching system "
-            . "$crypto_package helper; only picotls can currently be "
-            . "built as the private fallback\n"
-            if $backend ne 'picotls';
-
-        $source_backend = 'picotls';
+    if ($force_share || !_system_pair($pkg_config, $backend)) {
+        if ($backend eq 'picotls') {
+            $source_backend = 'picotls';
+        }
+        elsif ($backend eq 'gnutls'
+            && _pkg_config_has($pkg_config, 'gnutls', '3.7.5')) {
+            $source_backend = 'gnutls';
+        }
+        elsif ($backend eq 'openssl'
+            && _pkg_config_has($pkg_config, 'openssl', '3.5.0')) {
+            $source_backend = 'openssl';
+        }
+        else {
+            die "ALIEN_NGTCP2_CRYPTO=$backend cannot be built from the "
+                . "available system TLS libraries; install the matching "
+                . "$crypto_package helper or choose picotls\n";
+        }
     }
 }
-else {
+elsif (!$force_share) {
     for my $candidate (qw(openssl gnutls boringssl wolfssl picotls)) {
         next if !_system_pair($pkg_config, $candidate);
 
@@ -82,12 +95,23 @@ else {
         $crypto_package = $provider{$candidate};
         last;
     }
+}
 
-    if (!defined $backend) {
+if (!defined $backend) {
+    if (_pkg_config_has($pkg_config, 'openssl', '1.1.1')) {
         $backend = 'picotls';
-        $crypto_package = $provider{picotls};
         $source_backend = 'picotls';
     }
+    elsif (_pkg_config_has($pkg_config, 'gnutls', '3.7.5')) {
+        $backend = 'gnutls';
+        $source_backend = 'gnutls';
+    }
+    else {
+        $backend = 'picotls';
+        $source_backend = 'picotls';
+    }
+
+    $crypto_package = $provider{$backend};
 }
 
 meta_prop->{my_crypto_backend} = $backend;
@@ -105,8 +129,11 @@ plugin 'PkgConfig' => (
 );
 
 share {
-    requires 'Alien::OpenSSL' => '0.15';
-    requires 'Alien::cmake3'  => '0.10';
+    requires 'Alien::cmake3' => '0.10';
+
+    if (defined($source_backend) && $source_backend eq 'picotls') {
+        requires 'Alien::OpenSSL' => '0.15';
+    }
 
     start_url 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.25.0/ngtcp2-1.25.0.tar.gz';
 
@@ -119,12 +146,15 @@ share {
     build sub {
         my ($build) = @_;
 
-        require Alien::OpenSSL;
         require Alien::cmake3;
 
         my $prefix = $build->install_prop->{prefix};
         my $cmake = Alien::cmake3->exe;
         my $path_sep = $Config{path_sep} || ':';
+        my $source = $build->meta_prop->{my_source_backend};
+
+        die "share build has no selected crypto source backend\n"
+            if !defined $source;
 
         local $ENV{PATH} = join(
             $path_sep,
@@ -132,76 +162,130 @@ share {
             $ENV{PATH} || (),
         );
 
-        my $picotls_source = $build->meta_prop->{my_picotls_source};
-        my $picotls_build = File::Spec->catdir(
-            File::Spec->curdir,
-            '.alien-picotls-build',
-        );
         my $ngtcp2_build = File::Spec->catdir(
             File::Spec->curdir,
             '.alien-ngtcp2-build',
         );
 
-        my @openssl_root;
-        if (Alien::OpenSSL->install_type eq 'share') {
-            push @openssl_root,
-                '-DOPENSSL_ROOT_DIR=' . Alien::OpenSSL->dist_dir;
+        my @backend_args = (
+            '-DENABLE_OPENSSL=OFF',
+            '-DENABLE_GNUTLS=OFF',
+            '-DENABLE_BORINGSSL=OFF',
+            '-DENABLE_PICOTLS=OFF',
+            '-DENABLE_WOLFSSL=OFF',
+        );
+        my @extra_args;
+
+        if ($source eq 'picotls') {
+            require Alien::OpenSSL;
+
+            my $picotls_source
+                = $build->meta_prop->{my_picotls_source};
+            my $picotls_build = File::Spec->catdir(
+                File::Spec->curdir,
+                '.alien-picotls-build',
+            );
+
+            my @openssl_root;
+            if (Alien::OpenSSL->install_type eq 'share') {
+                push @openssl_root,
+                    '-DOPENSSL_ROOT_DIR=' . Alien::OpenSSL->dist_dir;
+            }
+
+            $build->system(
+                $cmake,
+                '-S', $picotls_source,
+                '-B', $picotls_build,
+                "-DCMAKE_INSTALL_PREFIX=$prefix",
+                '-DCMAKE_BUILD_TYPE=Release',
+                '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+                @openssl_root,
+            );
+            $build->system(
+                $cmake,
+                '--build', $picotls_build,
+                '--config', 'Release',
+            );
+            $build->system(
+                $cmake,
+                '--build', $picotls_build,
+                '--target', 'install',
+                '--config', 'Release',
+            );
+
+            my @picotls_openssl_candidates = (
+                File::Spec->catfile(
+                    $prefix, 'lib', 'libpicotls-openssl.a',
+                ),
+                File::Spec->catfile(
+                    $prefix, 'lib', 'picotls-openssl.lib',
+                ),
+            );
+            my @picotls_core_candidates = (
+                File::Spec->catfile(
+                    $prefix, 'lib', 'libpicotls-core.a',
+                ),
+                File::Spec->catfile(
+                    $prefix, 'lib', 'picotls-core.lib',
+                ),
+            );
+
+            my ($picotls_openssl)
+                = grep { -f $_ } @picotls_openssl_candidates;
+            my ($picotls_core)
+                = grep { -f $_ } @picotls_core_candidates;
+
+            die "Picotls OpenSSL static library was not installed\n"
+                if !defined $picotls_openssl;
+            die "Picotls core static library was not installed\n"
+                if !defined $picotls_core;
+
+            my $picotls_include = File::Spec->catdir(
+                $prefix,
+                'include',
+            );
+            my $picotls_libraries
+                = join ';', $picotls_openssl, $picotls_core;
+
+            @backend_args = (
+                '-DENABLE_OPENSSL=OFF',
+                '-DENABLE_GNUTLS=OFF',
+                '-DENABLE_BORINGSSL=OFF',
+                '-DENABLE_PICOTLS=ON',
+                '-DENABLE_WOLFSSL=OFF',
+            );
+            @extra_args = (
+                "-DPICOTLS_INCLUDE_DIR=$picotls_include",
+                "-DPICOTLS_LIBRARIES=$picotls_libraries",
+                @openssl_root,
+            );
+
+            $build->runtime_prop->{my_picotls_libs}
+                = join ' ', $picotls_openssl, $picotls_core;
+            $build->runtime_prop->{my_openssl_libs}
+                = Alien::OpenSSL->libs;
         }
-
-        $build->system(
-            $cmake,
-            '-S', $picotls_source,
-            '-B', $picotls_build,
-            "-DCMAKE_INSTALL_PREFIX=$prefix",
-            '-DCMAKE_BUILD_TYPE=Release',
-            '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
-            @openssl_root,
-        );
-        $build->system(
-            $cmake,
-            '--build', $picotls_build,
-            '--config', 'Release',
-        );
-        $build->system(
-            $cmake,
-            '--build', $picotls_build,
-            '--target', 'install',
-            '--config', 'Release',
-        );
-
-        my @picotls_openssl_candidates = (
-            File::Spec->catfile(
-                $prefix, 'lib', 'libpicotls-openssl.a',
-            ),
-            File::Spec->catfile(
-                $prefix, 'lib', 'picotls-openssl.lib',
-            ),
-        );
-        my @picotls_core_candidates = (
-            File::Spec->catfile(
-                $prefix, 'lib', 'libpicotls-core.a',
-            ),
-            File::Spec->catfile(
-                $prefix, 'lib', 'picotls-core.lib',
-            ),
-        );
-
-        my ($picotls_openssl)
-            = grep { -f $_ } @picotls_openssl_candidates;
-        my ($picotls_core)
-            = grep { -f $_ } @picotls_core_candidates;
-
-        die "Picotls OpenSSL static library was not installed\n"
-            if !defined $picotls_openssl;
-        die "Picotls core static library was not installed\n"
-            if !defined $picotls_core;
-
-        my $picotls_include = File::Spec->catdir(
-            $prefix,
-            'include',
-        );
-        my $picotls_libraries
-            = join ';', $picotls_openssl, $picotls_core;
+        elsif ($source eq 'gnutls') {
+            @backend_args = (
+                '-DENABLE_OPENSSL=OFF',
+                '-DENABLE_GNUTLS=ON',
+                '-DENABLE_BORINGSSL=OFF',
+                '-DENABLE_PICOTLS=OFF',
+                '-DENABLE_WOLFSSL=OFF',
+            );
+        }
+        elsif ($source eq 'openssl') {
+            @backend_args = (
+                '-DENABLE_OPENSSL=ON',
+                '-DENABLE_GNUTLS=OFF',
+                '-DENABLE_BORINGSSL=OFF',
+                '-DENABLE_PICOTLS=OFF',
+                '-DENABLE_WOLFSSL=OFF',
+            );
+        }
+        else {
+            die "unsupported share crypto source backend '$source'\n";
+        }
 
         $build->system(
             $cmake,
@@ -213,15 +297,9 @@ share {
             '-DENABLE_LIB_ONLY=ON',
             '-DENABLE_SHARED_LIB=OFF',
             '-DENABLE_STATIC_LIB=ON',
-            '-DENABLE_OPENSSL=OFF',
-            '-DENABLE_GNUTLS=OFF',
-            '-DENABLE_BORINGSSL=OFF',
-            '-DENABLE_PICOTLS=ON',
-            '-DENABLE_WOLFSSL=OFF',
+            @backend_args,
             '-DBUILD_TESTING=OFF',
-            "-DPICOTLS_INCLUDE_DIR=$picotls_include",
-            "-DPICOTLS_LIBRARIES=$picotls_libraries",
-            @openssl_root,
+            @extra_args,
         );
         $build->system(
             $cmake,
@@ -234,13 +312,6 @@ share {
             '--target', 'install',
             '--config', 'Release',
         );
-
-        $build->runtime_prop->{my_picotls_libs}
-            = join ' ', $picotls_openssl, $picotls_core;
-        $build->runtime_prop->{my_openssl_cflags}
-            = Alien::OpenSSL->cflags;
-        $build->runtime_prop->{my_openssl_libs}
-            = Alien::OpenSSL->libs;
 
         return 1;
     };
