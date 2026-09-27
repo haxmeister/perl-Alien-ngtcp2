@@ -34,6 +34,25 @@ sub _pkg_config_has {
     ) == 0;
 }
 
+sub _pkg_config_output {
+    my ($command, @args) = @_;
+
+    return if !defined $command;
+
+    my $stdout = '';
+    my $ok = run(
+        command => [$command, @args],
+        buffer  => \$stdout,
+        verbose => 0,
+    );
+
+    return if !$ok;
+
+    $stdout =~ s/\s+\z//;
+
+    return $stdout;
+}
+
 sub _cmake_path {
     my ($path) = @_;
 
@@ -183,6 +202,8 @@ sub _system_pair {
 }
 
 my $pkg_config = _pkg_config_command();
+my $system_openssl_available
+    = _pkg_config_has($pkg_config, 'openssl', '1.1.1');
 my $windows_openssl_root = _windows_openssl_root();
 my $windows_openssl_version
     = _windows_openssl_version($windows_openssl_root);
@@ -289,6 +310,8 @@ meta_prop->{my_picotls_source}
     = File::Spec->rel2abs('vendor/picotls');
 meta_prop->{my_windows_openssl_root}
     = $windows_openssl_root;
+meta_prop->{my_system_openssl_available}
+    = $system_openssl_available ? 1 : 0;
 
 plugin 'PkgConfig' => (
     pkg_name => [
@@ -303,7 +326,8 @@ share {
 
     if (defined($source_backend)
         && $source_backend eq 'picotls'
-        && $^O ne 'MSWin32') {
+        && $^O ne 'MSWin32'
+        && !$system_openssl_available) {
         requires 'Alien::OpenSSL' => '0.15';
     }
 
@@ -398,16 +422,43 @@ share {
                     );
             }
             else {
-                require Alien::OpenSSL;
+                if ($build->meta_prop->{my_system_openssl_available}) {
+                    my $command = _pkg_config_command();
 
-                if (Alien::OpenSSL->install_type eq 'share') {
+                    $openssl_cflags = _pkg_config_output(
+                        $command,
+                        '--cflags',
+                        'openssl',
+                    ) || '';
+                    $openssl_libs = _pkg_config_output(
+                        $command,
+                        '--libs',
+                        'openssl',
+                    ) || '';
+
+                    my $openssl_prefix = _pkg_config_output(
+                        $command,
+                        '--variable=prefix',
+                        'openssl',
+                    );
+
                     push @openssl_root,
-                        '-DOPENSSL_ROOT_DIR='
-                        . Alien::OpenSSL->dist_dir;
+                        "-DOPENSSL_ROOT_DIR=$openssl_prefix"
+                        if defined($openssl_prefix)
+                        && length($openssl_prefix);
                 }
+                else {
+                    require Alien::OpenSSL;
 
-                $openssl_cflags = Alien::OpenSSL->cflags;
-                $openssl_libs = Alien::OpenSSL->libs;
+                    if (Alien::OpenSSL->install_type eq 'share') {
+                        push @openssl_root,
+                            '-DOPENSSL_ROOT_DIR='
+                            . Alien::OpenSSL->dist_dir;
+                    }
+
+                    $openssl_cflags = Alien::OpenSSL->cflags;
+                    $openssl_libs = Alien::OpenSSL->libs;
+                }
             }
 
             $build->system(

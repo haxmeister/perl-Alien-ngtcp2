@@ -100,9 +100,10 @@ builds ngtcp2 1.25.0 with the exact Picotls revision tested by that ngtcp2
 release.
 
 Picotls uses OpenSSL for cryptographic and X.509 operations but does not
-require OpenSSL's QUIC TLS API. On Unix-like systems this fallback obtains
-OpenSSL through L<Alien::OpenSSL>. Alien::OpenSSL prefers an existing system
-installation and can provide a private copy when required.
+require OpenSSL's QUIC TLS API. On Unix-like systems a suitable system OpenSSL
+1.1.1 or newer is used directly. L<Alien::OpenSSL> is required only when no
+usable system OpenSSL development installation is available, in which case it
+can provide a private fallback.
 
 On Windows the fallback uses the OpenSSL development tree belonging to the
 active Perl/compiler toolchain. Picotls requires OpenSSL 1.1.1 or newer.

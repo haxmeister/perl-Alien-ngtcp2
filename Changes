@@ -7,9 +7,9 @@ Revision history for Alien-ngtcp2
     - Build against a suitable raw GnuTLS installation when no complete
       system ngtcp2 provider is available.
     - Add a pinned Picotls/OpenSSL share fallback when needed.
-    - Reuse the host OpenSSL installation through Alien::OpenSSL on
-      Unix-like systems when possible instead of replacing or upgrading
-      the system TLS stack.
+    - Use a suitable host OpenSSL installation directly on Unix-like
+      systems; require Alien::OpenSSL only when no usable system OpenSSL
+      development installation exists.
     - Reuse the active Perl toolchain's OpenSSL on Windows and reject
       pre-1.1.1 toolchains with an explicit compatibility diagnostic.
     - Validate the crypto helper with a real downstream XS compile/link test.
