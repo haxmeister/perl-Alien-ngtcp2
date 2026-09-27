@@ -3,6 +3,7 @@ project(alien_ngtcp2_picotls C)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(OpenSSL 1.1.1 REQUIRED COMPONENTS Crypto)
 find_package(Threads REQUIRED)
