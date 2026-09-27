@@ -18,16 +18,19 @@ Installation is automatic.
 If a compatible system ngtcp2 crypto helper is already installed,
 Alien::ngtcp2 reuses it. The current preference order is:
 
-1. OpenSSL
-2. GnuTLS
-3. BoringSSL / AWS-LC
-4. wolfSSL
-5. Picotls
+1. Picotls
+2. OpenSSL
+3. GnuTLS
+4. BoringSSL / AWS-LC
+5. wolfSSL
 
-If no complete system pair is present, Alien::ngtcp2 can build the matching
-ngtcp2 crypto integration against a suitable raw GnuTLS installation. If that
-is not the applicable host TLS path, the normal fallback uses the Picotls
-revision tested by ngtcp2 1.25.0.
+Picotls is the preferred automatic backend because it gives the most portable
+path across Linux, macOS, and Windows without depending on OpenSSL's native
+QUIC TLS API.
+
+If no complete system pair is present, Alien::ngtcp2 prefers the Picotls
+fallback when OpenSSL 1.1.1 or newer is available. A host without suitable
+OpenSSL but with suitable GnuTLS can instead build the matching GnuTLS helper.
 
 The Picotls fallback uses OpenSSL for cryptographic and X.509 operations, but
 does not require OpenSSL 3.5's QUIC TLS API. On Unix-like systems a suitable
