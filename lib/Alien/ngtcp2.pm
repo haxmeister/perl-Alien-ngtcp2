@@ -21,7 +21,18 @@ sub crypto_package {
 sub crypto_cflags {
     my ($class) = @_;
 
-    return $class->alt($class->crypto_package)->cflags_static;
+    my $flags
+        = $class->alt($class->crypto_package)->cflags_static;
+
+    if ($class->crypto_backend eq 'picotls'
+        && $class->install_type eq 'share') {
+        my $openssl
+            = $class->runtime_prop->{my_openssl_cflags} || '';
+
+        $flags = join ' ', grep { length } $flags, $openssl;
+    }
+
+    return $flags;
 }
 
 sub crypto_libs {
