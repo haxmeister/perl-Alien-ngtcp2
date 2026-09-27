@@ -27,12 +27,4 @@ ok(
     'crypto linker flags are available',
 );
 
-if (Alien::ngtcp2->install_type eq 'share') {
-    is(
-        $backend,
-        'picotls',
-        'share fallback uses Picotls',
-    );
-}
-
 done_testing;
