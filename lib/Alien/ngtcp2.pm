@@ -22,7 +22,7 @@ sub crypto_cflags {
     my ($class) = @_;
 
     my $flags
-        = $class->alt($class->crypto_package)->cflags_static;
+        = $class->alt($class->crypto_package)->cflags;
 
     if ($class->crypto_backend eq 'picotls'
         && $class->install_type eq 'share') {
@@ -52,7 +52,7 @@ sub crypto_libs {
             $openssl;
     }
 
-    return $helper->libs_static;
+    return $helper->libs;
 }
 
 1;
