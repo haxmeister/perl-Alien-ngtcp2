@@ -263,7 +263,7 @@ if (defined $requested) {
     }
 }
 elsif (!$force_share) {
-    for my $candidate (qw(openssl gnutls boringssl wolfssl picotls)) {
+    for my $candidate (qw(picotls openssl gnutls boringssl wolfssl)) {
         next if !_system_pair($pkg_config, $candidate);
 
         $backend = $candidate;
