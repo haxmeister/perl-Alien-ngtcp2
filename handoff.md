@@ -2,15 +2,13 @@
 
 ## Current branch
 
-feature/crypto-provider-selection
+release/0.02
 
-Draft PR: #4
-
-Development version: 0.02_01
+Release target: 0.02
 
 Base release: 0.01
 
-## Purpose of this branch
+## Purpose of release 0.02
 
 Alien::ngtcp2 0.01 intentionally provided only core libngtcp2.
 
@@ -138,28 +136,30 @@ ALIEN_INSTALL_TYPE=system, and must verify:
 
 It then runs the same XS linkage test.
 
-## CI status at this handoff update
+## CI status
 
-Before the final documentation/system-provider commits, the Picotls fallback
-was green on:
+The adaptive-provider implementation merged to main only after the full matrix
+was green:
 
 - Linux Perl 5.20 through 5.44;
+- macOS Perl 5.20, 5.28, 5.36, 5.44;
 - Windows Perl 5.20, 5.28, 5.36, 5.44;
+- Strawberry Perl 5.30 and 5.42;
 - minimum Alien::Build 2.84 on Linux and Windows;
-- Strawberry Perl 5.42.
+- legacy Strawberry Perl 5.28 rejection diagnostic;
+- system GnuTLS provider reuse;
+- downstream XS compile/link through crypto_cflags and crypto_libs.
 
-The old Strawberry 5.28 failure was traced to its bundled OpenSSL 1.1.0j and
-was converted into an intentional diagnostic test.
-
-The final matrix including Strawberry 5.30 and the system-GnuTLS reuse job
-must be green before merging PR #4.
+Release preparation adds a dedicated source-GnuTLS fallback job so that both
+system-provider reuse and source-built GnuTLS integration are covered before
+0.02 is released.
 
 ## Next steps
 
-1. Wait for the final CI matrix after the latest branch commits.
-2. Fix any real portability/provider-reuse failures.
-3. Do not merge until fallback and system-provider paths are both green.
-4. Once Alien::ngtcp2 is stable, update Net::QUIC to require the new Alien
-   version and consume crypto_backend/crypto_cflags/crypto_libs.
+1. Require a fully green release/0.02 CI matrix.
+2. Merge release/0.02 to main.
+3. Build Alien-ngtcp2-0.02.tar.gz from main and upload it to PAUSE.
+4. Update Net::QUIC to require Alien::ngtcp2 0.02 and consume
+   crypto_backend/crypto_cflags/crypto_libs.
 5. Net::QUIC remains event-loop neutral: frameworks own UDP sockets, readiness,
    scheduling, and timers; Net::QUIC owns QUIC/TLS protocol state.
