@@ -580,6 +580,17 @@ share {
                 '-DENABLE_PICOTLS=OFF',
                 '-DENABLE_WOLFSSL=OFF',
             );
+
+            my $openssl_prefix = _pkg_config_output(
+                _pkg_config_command(),
+                '--variable=prefix',
+                'openssl',
+            );
+
+            push @extra_args,
+                "-DOPENSSL_ROOT_DIR=$openssl_prefix"
+                if defined($openssl_prefix)
+                && length($openssl_prefix);
         }
         else {
             die "unsupported share crypto source backend '$source'\n";
