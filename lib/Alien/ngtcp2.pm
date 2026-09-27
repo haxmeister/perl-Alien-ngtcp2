@@ -98,10 +98,16 @@ ngtcp2 1.25.0 with the exact Picotls revision tested by that ngtcp2 release.
 Picotls uses OpenSSL for cryptographic and X.509 operations but does not require
 OpenSSL's QUIC TLS API.
 
-The fallback obtains OpenSSL through L<Alien::OpenSSL>. Alien::OpenSSL itself
-prefers an existing system OpenSSL installation. Therefore an ordinary machine
-that already uses OpenSSL continues to use that installation rather than
-receiving a competing TLS stack.
+On Unix-like systems the fallback obtains OpenSSL through L<Alien::OpenSSL>.
+Alien::OpenSSL prefers an existing system installation and can provide a
+private copy when required.
+
+On Windows the fallback uses the OpenSSL development tree belonging to the
+active Perl/compiler toolchain. Picotls requires OpenSSL 1.1.1 or newer.
+Older Windows toolchains are rejected with a clear diagnostic rather than
+having their TLS installation silently replaced. Strawberry Perl 5.30 and
+newer meet this baseline; Strawberry Perl 5.28 contains OpenSSL 1.1.0j and is
+too old for the fallback.
 
 Alien::ngtcp2 never replaces or upgrades the operating system TLS library.
 
@@ -114,6 +120,11 @@ helper installations at version 1.25.0 or newer. Its fallback uses ngtcp2
 =head1 PERL VERSION
 
 Alien::ngtcp2 requires Perl 5.20 or newer.
+
+The Perl version requirement is independent of the native TLS requirement.
+For example, Perl 5.28 works with a current native toolchain even though the
+historical Strawberry Perl 5.28 distribution bundles an OpenSSL release that
+is too old for the Picotls fallback.
 
 =head1 METHODS
 
@@ -153,8 +164,10 @@ Developers and packagers may set C<ALIEN_NGTCP2_CRYPTO> to C<auto> or one of:
   wolfssl
   picotls
 
-An explicit non-Picotls choice currently requires a matching system
-C<libngtcp2> crypto helper. C<picotls> explicitly selects the private fallback.
+An explicit backend choice first uses a matching system C<libngtcp2> crypto
+helper when available. C<gnutls> and C<openssl> can also build the matching
+ngtcp2 helper when a suitable raw system TLS library is present. C<picotls>
+explicitly selects the portable source fallback.
 
 =head1 FALLBACK PICOTLS SOURCE
 
