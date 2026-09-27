@@ -62,7 +62,10 @@ Expert override:
 
 ## Source fallback
 
-The normal source fallback builds:
+If no complete system ngtcp2/provider pair exists, a host with suitable raw
+GnuTLS can build ngtcp2 1.25.0 with libngtcp2_crypto_gnutls.
+
+Otherwise the normal portable source fallback builds:
 
     ngtcp2 1.25.0
     libngtcp2_crypto_picotls
