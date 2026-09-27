@@ -80,8 +80,10 @@ minicrypto dependency tree is not included.
 Picotls handles TLS 1.3. OpenSSL is used for crypto and X.509 operations; this
 path does not require OpenSSL 3.5's native QUIC TLS API.
 
-On Unix-like systems OpenSSL is obtained through Alien::OpenSSL, which prefers
-the existing system installation and can provide a private fallback.
+On Unix-like systems a suitable system OpenSSL 1.1.1 or newer is consumed
+directly through pkg-config. Alien::OpenSSL is only required when no usable
+system OpenSSL development installation is available; it then provides the
+private fallback.
 
 On Windows the fallback deliberately uses the OpenSSL development tree attached
 to the active Perl/compiler toolchain instead of installing another OpenSSL.
