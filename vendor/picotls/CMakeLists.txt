@@ -14,7 +14,7 @@ set(PICOTLS_CORE_SOURCES
     lib/pembase64.c
 )
 
-if(WIN32)
+if(MSVC)
     list(APPEND PICOTLS_CORE_SOURCES lib/wintimeofday.c)
 endif()
 
@@ -43,7 +43,15 @@ target_link_libraries(picotls-openssl
         ${CMAKE_DL_LIBS}
 )
 
-if(WIN32)
+if(MSVC)
+    target_include_directories(picotls-core
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib"
+    )
+    target_include_directories(picotls-openssl
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib"
+    )
     target_compile_definitions(picotls-core PRIVATE _WINDOWS)
     target_compile_definitions(picotls-openssl PRIVATE _WINDOWS)
 endif()
