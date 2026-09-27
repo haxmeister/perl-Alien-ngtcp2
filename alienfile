@@ -1,11 +1,113 @@
 use alienfile 2.84;
 
+use Config;
+use File::Spec ();
+use IPC::Cmd qw(can_run);
+
+my $minimum_version = '1.25.0';
+
+my %provider = (
+    openssl   => 'libngtcp2_crypto_ossl',
+    gnutls    => 'libngtcp2_crypto_gnutls',
+    boringssl => 'libngtcp2_crypto_boringssl',
+    wolfssl   => 'libngtcp2_crypto_wolfssl',
+    picotls   => 'libngtcp2_crypto_picotls',
+);
+
+sub _pkg_config_command {
+    return $ENV{PKG_CONFIG}
+        if defined($ENV{PKG_CONFIG}) && length($ENV{PKG_CONFIG});
+
+    return can_run('pkg-config') || can_run('pkgconf');
+}
+
+sub _pkg_config_has {
+    my ($command, $package, $version) = @_;
+
+    return 0 if !defined $command;
+
+    return system(
+        $command,
+        "--atleast-version=$version",
+        $package,
+    ) == 0;
+}
+
+sub _system_pair {
+    my ($command, $backend) = @_;
+
+    return 0
+        if !_pkg_config_has($command, 'libngtcp2', $minimum_version);
+
+    return _pkg_config_has(
+        $command,
+        $provider{$backend},
+        $minimum_version,
+    );
+}
+
+my $pkg_config = _pkg_config_command();
+my $requested = $ENV{ALIEN_NGTCP2_CRYPTO};
+
+if (defined $requested) {
+    $requested = lc $requested;
+
+    die "ALIEN_NGTCP2_CRYPTO must be one of: auto, "
+        . join(', ', sort keys %provider) . "\n"
+        if $requested ne 'auto' && !exists $provider{$requested};
+}
+
+$requested = undef if defined($requested) && $requested eq 'auto';
+
+my ($backend, $crypto_package, $source_backend);
+
+if (defined $requested) {
+    $backend = $requested;
+    $crypto_package = $provider{$backend};
+
+    if (!_system_pair($pkg_config, $backend)) {
+        die "ALIEN_NGTCP2_CRYPTO=$backend requires the matching system "
+            . "$crypto_package helper; only picotls can currently be "
+            . "built as the private fallback\n"
+            if $backend ne 'picotls';
+
+        $source_backend = 'picotls';
+    }
+}
+else {
+    for my $candidate (qw(openssl gnutls boringssl wolfssl picotls)) {
+        next if !_system_pair($pkg_config, $candidate);
+
+        $backend = $candidate;
+        $crypto_package = $provider{$candidate};
+        last;
+    }
+
+    if (!defined $backend) {
+        $backend = 'picotls';
+        $crypto_package = $provider{picotls};
+        $source_backend = 'picotls';
+    }
+}
+
+meta_prop->{my_crypto_backend} = $backend;
+meta_prop->{my_crypto_package} = $crypto_package;
+meta_prop->{my_source_backend} = $source_backend;
+meta_prop->{my_picotls_source}
+    = File::Spec->rel2abs('vendor/picotls');
+
 plugin 'PkgConfig' => (
-    pkg_name        => 'libngtcp2',
-    atleast_version => '1.25.0',
+    pkg_name => [
+        'libngtcp2',
+        $crypto_package,
+    ],
+    atleast_version => $minimum_version,
 );
 
 share {
+    requires 'Alien::OpenSSL' => '0.15';
+    requires 'Alien::cmake3'  => '0.10';
+
     start_url 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.25.0/ngtcp2-1.25.0.tar.gz';
 
     plugin 'Digest' => [
@@ -14,51 +116,157 @@ share {
     plugin 'Download';
     plugin 'Extract' => 'tar.gz';
 
-    if ($^O eq 'MSWin32') {
-        plugin 'Build::CMake';
+    build sub {
+        my ($build) = @_;
 
-        build [
-            [
-                '%{cmake}',
-                @{ meta->prop->{plugin_build_cmake}->{args} },
-                '-DENABLE_LIB_ONLY=ON',
-                '-DENABLE_SHARED_LIB=OFF',
-                '-DENABLE_STATIC_LIB=ON',
-                '-DENABLE_OPENSSL=OFF',
-                '-DENABLE_GNUTLS=OFF',
-                '-DENABLE_BORINGSSL=OFF',
-                '-DENABLE_PICOTLS=OFF',
-                '-DENABLE_WOLFSSL=OFF',
-                '-DBUILD_TESTING=OFF',
-                '%{.install.extract}',
-            ],
-            '%{make}',
-            '%{make} install',
-        ];
+        require Alien::OpenSSL;
+        require Alien::cmake3;
 
-        after 'gather' => sub {
-            my ($build) = @_;
+        my $prefix = $build->install_prop->{prefix};
+        my $cmake = Alien::cmake3->exe;
+        my $path_sep = $Config{path_sep} || ':';
 
-            my $compiler_type
-                = $build->meta_prop->{platform}->{compiler_type} || '';
-            my $define = $compiler_type eq 'microsoft'
-                ? '/DNGTCP2_STATICLIB'
-                : '-DNGTCP2_STATICLIB';
+        local $ENV{PATH} = join(
+            $path_sep,
+            Alien::cmake3->bin_dir,
+            $ENV{PATH} || (),
+        );
 
-            for my $key (qw(cflags cflags_static)) {
-                my $value = $build->runtime_prop->{$key} || '';
-                $build->runtime_prop->{$key}
-                    = join ' ', grep { length } $value, $define;
-            }
-        };
-    }
-    else {
-        plugin 'Build::Autoconf';
+        my $picotls_source = $build->meta_prop->{my_picotls_source};
+        my $picotls_build = File::Spec->catdir(
+            File::Spec->curdir,
+            '.alien-picotls-build',
+        );
+        my $ngtcp2_build = File::Spec->catdir(
+            File::Spec->curdir,
+            '.alien-ngtcp2-build',
+        );
 
-        build [
-            '%{configure} --enable-lib-only --with-openssl=no --with-gnutls=no --with-boringssl=no --with-picotls=no --with-wolfssl=no --disable-cryptotest --disable-shared --enable-static',
-            '%{make}',
-            '%{make} install',
-        ];
-    }
+        my @openssl_root;
+        if (Alien::OpenSSL->install_type eq 'share') {
+            push @openssl_root,
+                '-DOPENSSL_ROOT_DIR=' . Alien::OpenSSL->dist_dir;
+        }
+
+        $build->system(
+            $cmake,
+            '-S', $picotls_source,
+            '-B', $picotls_build,
+            "-DCMAKE_INSTALL_PREFIX=$prefix",
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+            @openssl_root,
+        );
+        $build->system(
+            $cmake,
+            '--build', $picotls_build,
+            '--config', 'Release',
+        );
+        $build->system(
+            $cmake,
+            '--build', $picotls_build,
+            '--target', 'install',
+            '--config', 'Release',
+        );
+
+        my @picotls_openssl_candidates = (
+            File::Spec->catfile(
+                $prefix, 'lib', 'libpicotls-openssl.a',
+            ),
+            File::Spec->catfile(
+                $prefix, 'lib', 'picotls-openssl.lib',
+            ),
+        );
+        my @picotls_core_candidates = (
+            File::Spec->catfile(
+                $prefix, 'lib', 'libpicotls-core.a',
+            ),
+            File::Spec->catfile(
+                $prefix, 'lib', 'picotls-core.lib',
+            ),
+        );
+
+        my ($picotls_openssl)
+            = grep { -f $_ } @picotls_openssl_candidates;
+        my ($picotls_core)
+            = grep { -f $_ } @picotls_core_candidates;
+
+        die "Picotls OpenSSL static library was not installed\n"
+            if !defined $picotls_openssl;
+        die "Picotls core static library was not installed\n"
+            if !defined $picotls_core;
+
+        my $picotls_include = File::Spec->catdir(
+            $prefix,
+            'include',
+        );
+        my $picotls_libraries
+            = join ';', $picotls_openssl, $picotls_core;
+
+        $build->system(
+            $cmake,
+            '-S', File::Spec->curdir,
+            '-B', $ngtcp2_build,
+            "-DCMAKE_INSTALL_PREFIX=$prefix",
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+            '-DENABLE_LIB_ONLY=ON',
+            '-DENABLE_SHARED_LIB=OFF',
+            '-DENABLE_STATIC_LIB=ON',
+            '-DENABLE_OPENSSL=OFF',
+            '-DENABLE_GNUTLS=OFF',
+            '-DENABLE_BORINGSSL=OFF',
+            '-DENABLE_PICOTLS=ON',
+            '-DENABLE_WOLFSSL=OFF',
+            '-DBUILD_TESTING=OFF',
+            "-DPICOTLS_INCLUDE_DIR=$picotls_include",
+            "-DPICOTLS_LIBRARIES=$picotls_libraries",
+            @openssl_root,
+        );
+        $build->system(
+            $cmake,
+            '--build', $ngtcp2_build,
+            '--config', 'Release',
+        );
+        $build->system(
+            $cmake,
+            '--build', $ngtcp2_build,
+            '--target', 'install',
+            '--config', 'Release',
+        );
+
+        $build->runtime_prop->{my_picotls_libs}
+            = join ' ', $picotls_openssl, $picotls_core;
+        $build->runtime_prop->{my_openssl_cflags}
+            = Alien::OpenSSL->cflags;
+        $build->runtime_prop->{my_openssl_libs}
+            = Alien::OpenSSL->libs;
+
+        return 1;
+    };
+
+    after 'gather' => sub {
+        my ($build) = @_;
+
+        my $compiler_type
+            = $build->meta_prop->{platform}->{compiler_type} || '';
+        my $define = $compiler_type eq 'microsoft'
+            ? '/DNGTCP2_STATICLIB'
+            : '-DNGTCP2_STATICLIB';
+
+        for my $key (qw(cflags cflags_static)) {
+            my $value = $build->runtime_prop->{$key} || '';
+            $build->runtime_prop->{$key}
+                = join ' ', grep { length } $value, $define;
+        }
+    };
+};
+
+after 'gather' => sub {
+    my ($build) = @_;
+
+    $build->runtime_prop->{my_crypto_backend}
+        = $build->meta_prop->{my_crypto_backend};
+    $build->runtime_prop->{my_crypto_package}
+        = $build->meta_prop->{my_crypto_package};
 };
