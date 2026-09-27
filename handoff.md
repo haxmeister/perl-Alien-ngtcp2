@@ -45,11 +45,15 @@ backend-specific Perl objects.
 
 Automatic system preference order:
 
-1. libngtcp2_crypto_ossl
-2. libngtcp2_crypto_gnutls
-3. libngtcp2_crypto_boringssl
-4. libngtcp2_crypto_wolfssl
-5. libngtcp2_crypto_picotls
+1. libngtcp2_crypto_picotls
+2. libngtcp2_crypto_ossl
+3. libngtcp2_crypto_gnutls
+4. libngtcp2_crypto_boringssl
+5. libngtcp2_crypto_wolfssl
+
+Picotls is the preferred automatic backend because it is the most portable
+choice across Linux, macOS, and Windows and does not depend on OpenSSL's native
+QUIC TLS API.
 
 A system provider is accepted only together with libngtcp2 1.25.0 or newer.
 
