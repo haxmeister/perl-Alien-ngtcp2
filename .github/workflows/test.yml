@@ -396,13 +396,24 @@ jobs:
       - name: Build
         env:
           ALIEN_INSTALL_TYPE: share
-          ALIEN_NGTCP2_CRYPTO: picotls
+          ALIEN_NGTCP2_CRYPTO: auto
         run: perl -MConfig -e 'system($Config{make}) == 0 or exit 1'
+
+      - name: Verify Picotls default
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: auto
+        run: |
+          perl -Iblib/lib -MAlien::ngtcp2 -e '
+            die "expected picotls backend, got "
+              . (Alien::ngtcp2->crypto_backend // "<undef>") . "\n"
+              unless Alien::ngtcp2->crypto_backend eq "picotls";
+          '
 
       - name: Test
         env:
           ALIEN_INSTALL_TYPE: share
-          ALIEN_NGTCP2_CRYPTO: picotls
+          ALIEN_NGTCP2_CRYPTO: auto
         run: perl -MConfig -e 'system($Config{make}, "test") == 0 or exit 1'
 
 
