@@ -2,11 +2,13 @@
 
 ## Current branch
 
-release/0.02
+main
 
-Release target: 0.02
+Current release-ready version: 0.02
 
-Base release: 0.01
+Previous CPAN release: 0.01
+
+Release preparation PR: #5 (merged)
 
 ## Purpose of release 0.02
 
@@ -18,7 +20,7 @@ that Net::QUIC should install into Linux::Event, IO::Async, PAGI, or another
 Perl ecosystem without forcing that ecosystem to replace or reorganize its TLS
 stack.
 
-The rule for this branch is:
+The release rule is:
 
     Adapt to the host TLS ecosystem. Do not make the host adapt to us.
 
@@ -153,15 +155,16 @@ was green:
 - system GnuTLS provider reuse;
 - downstream XS compile/link through crypto_cflags and crypto_libs.
 
-Release preparation adds a dedicated source-GnuTLS fallback job so that both
-system-provider reuse and source-built GnuTLS integration are covered before
-0.02 is released.
+Release preparation added a dedicated source-GnuTLS fallback job. The final
+0.02 release matrix completed successfully with both system-provider reuse and
+source-built GnuTLS integration covered. The 0.02 disttest and CPANTS lint also
+passed.
 
 ## Next steps
 
-1. Require a fully green release/0.02 CI matrix.
-2. Merge release/0.02 to main.
-3. Build Alien-ngtcp2-0.02.tar.gz from main and upload it to PAUSE.
+1. Build Alien-ngtcp2-0.02.tar.gz from main.
+2. Upload the 0.02 tarball to PAUSE.
+3. Tag/create the GitHub 0.02 release after the release artifact is confirmed.
 4. Update Net::QUIC to require Alien::ngtcp2 0.02 and consume
    crypto_backend/crypto_cflags/crypto_libs.
 5. Net::QUIC remains event-loop neutral: frameworks own UDP sockets, readiness,
