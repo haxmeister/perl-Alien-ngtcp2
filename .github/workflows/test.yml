@@ -263,11 +263,11 @@ jobs:
     name: Reuse system GnuTLS provider
     runs-on: ubuntu-24.04
 
-    env:
-      PKG_CONFIG_PATH: ${{ runner.temp }}/ngtcp2-system/lib/pkgconfig
-
     steps:
       - uses: actions/checkout@v7
+
+      - name: Set provider pkg-config path
+        run: echo "PKG_CONFIG_PATH=${RUNNER_TEMP}/ngtcp2-system/lib/pkgconfig" >> "${GITHUB_ENV}"
 
       - name: Install native build prerequisites
         run: |
