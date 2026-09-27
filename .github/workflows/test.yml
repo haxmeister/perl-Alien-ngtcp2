@@ -33,8 +33,6 @@ jobs:
           - "5.42"
           - "5.44"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -52,6 +50,9 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
@@ -62,6 +63,9 @@ jobs:
 
       - name: Distribution test
         if: matrix.perl == '5.44'
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl -MConfig -e 'system($Config{make}, "disttest") == 0 or exit 1'
 
       - name: Install CPANTS lint
@@ -87,8 +91,6 @@ jobs:
           - "5.36"
           - "5.44"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -106,6 +108,9 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
@@ -127,8 +132,6 @@ jobs:
           - "5.36"
           - "5.44"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -146,6 +149,9 @@ jobs:
         run: cpanm --notest --installdeps .
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
@@ -165,8 +171,6 @@ jobs:
           - "5.28"
           - "5.42"
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -183,6 +187,9 @@ jobs:
         run: cpanm --local-lib=local --notest --installdeps .
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
@@ -196,8 +203,6 @@ jobs:
     name: Alien::Build 2.84
     runs-on: ubuntu-24.04
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -218,6 +223,9 @@ jobs:
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
@@ -231,8 +239,6 @@ jobs:
     name: Alien::Build 2.84 on Windows
     runs-on: windows-2025
 
-    env:
-      ALIEN_INSTALL_TYPE: share
 
     steps:
       - uses: actions/checkout@v7
@@ -253,6 +259,9 @@ jobs:
         run: perl -MAlien::Build -e 'die "expected Alien::Build 2.84, got $Alien::Build::VERSION\n" unless $Alien::Build::VERSION eq "2.84"'
 
       - name: Configure
+        env:
+          ALIEN_INSTALL_TYPE: share
+          ALIEN_NGTCP2_CRYPTO: picotls
         run: perl Makefile.PL
 
       - name: Build
