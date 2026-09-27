@@ -1,6 +1,7 @@
 use alienfile 2.84;
 
 use Config;
+use Cwd qw(abs_path);
 use File::Spec ();
 use IPC::Cmd qw(can_run);
 
@@ -31,6 +32,66 @@ sub _pkg_config_has {
         "--atleast-version=$version",
         $package,
     ) == 0;
+}
+
+sub _windows_openssl_root {
+    return if $^O ne 'MSWin32';
+
+    my @candidates;
+
+    push @candidates, $ENV{OPENSSL_ROOT_DIR}
+        if defined($ENV{OPENSSL_ROOT_DIR})
+        && length($ENV{OPENSSL_ROOT_DIR});
+
+    for my $libdir (split /\s+/, $Config{libpth} || '') {
+        push @candidates,
+            File::Spec->catdir($libdir, File::Spec->updir);
+    }
+
+    if (defined($Config{prefix}) && length($Config{prefix})) {
+        push @candidates,
+            File::Spec->catdir(
+                $Config{prefix},
+                File::Spec->updir,
+                'c',
+            );
+    }
+
+    my $path_sep = $Config{path_sep} || ';';
+    for my $entry (split /\Q$path_sep\E/, $ENV{PATH} || '') {
+        next if !length $entry;
+
+        my ($volume, $dirs, $file)
+            = File::Spec->splitpath($entry, 1);
+        my $name = $dirs;
+        $name =~ s{[\\/]+\z}{};
+        $name =~ s{.*[\\/]}{};
+
+        next if lc($name) ne 'bin';
+
+        push @candidates,
+            File::Spec->catdir($entry, File::Spec->updir);
+    }
+
+    my %seen;
+
+    for my $candidate (@candidates) {
+        next if !defined($candidate) || !length($candidate);
+
+        my $root = abs_path($candidate);
+        next if !defined $root || $seen{$root}++;
+
+        my $header = File::Spec->catfile(
+            $root,
+            'include',
+            'openssl',
+            'ssl.h',
+        );
+
+        return $root if -f $header;
+    }
+
+    return;
 }
 
 sub _system_pair {
@@ -119,6 +180,8 @@ meta_prop->{my_crypto_package} = $crypto_package;
 meta_prop->{my_source_backend} = $source_backend;
 meta_prop->{my_picotls_source}
     = File::Spec->rel2abs('vendor/picotls');
+meta_prop->{my_windows_openssl_root}
+    = _windows_openssl_root();
 
 plugin 'PkgConfig' => (
     pkg_name => [
@@ -131,7 +194,9 @@ plugin 'PkgConfig' => (
 share {
     requires 'Alien::cmake3' => '0.10';
 
-    if (defined($source_backend) && $source_backend eq 'picotls') {
+    if (defined($source_backend)
+        && $source_backend eq 'picotls'
+        && $^O ne 'MSWin32') {
         requires 'Alien::OpenSSL' => '0.15';
     }
 
@@ -177,8 +242,6 @@ share {
         my @extra_args;
 
         if ($source eq 'picotls') {
-            require Alien::OpenSSL;
-
             my $picotls_source
                 = $build->meta_prop->{my_picotls_source};
             my $picotls_build = File::Spec->catdir(
@@ -186,10 +249,42 @@ share {
                 '.alien-picotls-build',
             );
 
-            my @openssl_root;
-            if (Alien::OpenSSL->install_type eq 'share') {
+            my (@openssl_root, $openssl_cflags, $openssl_libs);
+
+            if ($^O eq 'MSWin32') {
+                my $root
+                    = $build->meta_prop->{my_windows_openssl_root};
+
+                die "No usable Windows OpenSSL development tree was found\n"
+                    if !defined($root) || !length($root);
+
+                my $include = File::Spec->catdir(
+                    $root,
+                    'include',
+                );
+                my $lib = File::Spec->catdir(
+                    $root,
+                    'lib',
+                );
+
                 push @openssl_root,
-                    '-DOPENSSL_ROOT_DIR=' . Alien::OpenSSL->dist_dir;
+                    "-DOPENSSL_ROOT_DIR=$root";
+
+                $openssl_cflags = qq{-I"$include"};
+                $openssl_libs
+                    = qq{-L"$lib" -lssl -lcrypto};
+            }
+            else {
+                require Alien::OpenSSL;
+
+                if (Alien::OpenSSL->install_type eq 'share') {
+                    push @openssl_root,
+                        '-DOPENSSL_ROOT_DIR='
+                        . Alien::OpenSSL->dist_dir;
+                }
+
+                $openssl_cflags = Alien::OpenSSL->cflags;
+                $openssl_libs = Alien::OpenSSL->libs;
             }
 
             $build->system(
@@ -262,8 +357,10 @@ share {
 
             $build->runtime_prop->{my_picotls_libs}
                 = join ' ', $picotls_openssl, $picotls_core;
+            $build->runtime_prop->{my_openssl_cflags}
+                = $openssl_cflags;
             $build->runtime_prop->{my_openssl_libs}
-                = Alien::OpenSSL->libs;
+                = $openssl_libs;
         }
         elsif ($source eq 'gnutls') {
             @backend_args = (
