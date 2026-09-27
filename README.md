@@ -30,9 +30,10 @@ is not the applicable host TLS path, the normal fallback uses the Picotls
 revision tested by ngtcp2 1.25.0.
 
 The Picotls fallback uses OpenSSL for cryptographic and X.509 operations, but
-does not require OpenSSL 3.5's QUIC TLS API. On Unix-like systems OpenSSL is
-obtained through Alien::OpenSSL. Alien::OpenSSL first reuses an existing
-system installation and can provide a private copy when needed.
+does not require OpenSSL 3.5's QUIC TLS API. On Unix-like systems a suitable
+system OpenSSL 1.1.1 or newer is used directly. Alien::OpenSSL is only needed
+when no usable system OpenSSL development installation is available; it can
+then provide a private copy.
 
 On Windows, Alien::ngtcp2 deliberately uses the OpenSSL development tree that
 belongs to the active Perl/compiler toolchain. Picotls requires OpenSSL 1.1.1
