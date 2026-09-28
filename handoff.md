@@ -6,7 +6,7 @@ feature/picotls-only
 
 Base release: 0.02
 
-Development version: 0.03_001
+Release candidate version: 0.03
 
 main remains the released 0.02 code.
 
@@ -115,10 +115,8 @@ backends are no longer part of the contract.
 
 ## Next steps
 
-1. Get the full feature/picotls-only CI matrix green.
-2. Do not merge until explicitly approved.
-3. Update Net::QUIC to depend on the Picotls-only Alien development branch
-   while the change is being proven.
-4. Remove all non-Picotls TLS code from Net::QUIC.
-5. Resume the private in-memory client/server handshake proof with one TLS
-   implementation.
+1. Get the final 0.03 commit through the full CI matrix.
+2. Merge feature/picotls-only to main when that final matrix is green.
+3. Build and upload Alien-ngtcp2-0.03.tar.gz to PAUSE.
+4. Tag/create the GitHub 0.03 release after the release artifact is confirmed.
+5. Update Net::QUIC to require Alien::ngtcp2 0.03 and remove all non-Picotls TLS code.
