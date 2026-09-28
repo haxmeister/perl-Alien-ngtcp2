@@ -1,5 +1,17 @@
 Revision history for Alien-ngtcp2
 
+0.03  2026-09-27
+    - Standardize on Picotls as the single QUIC TLS backend.
+    - Always build the tested ngtcp2 1.25.0 and pinned Picotls pair instead
+      of selecting an arbitrary system crypto helper.
+    - Continue using a suitable host OpenSSL 1.1.1 or newer for Picotls
+      cryptography and X.509 handling.
+    - Keep using Alien::OpenSSL as the Unix fallback when no suitable
+      system OpenSSL development installation is available.
+    - Keep using the active Perl toolchain OpenSSL on Windows.
+    - Preserve crypto_backend, crypto_package, crypto_cflags, and
+      crypto_libs for downstream compatibility.
+
 0.02  2026-09-27
     - Add automatic selection of an installed ngtcp2 QUIC crypto provider,
       preferring suitable host TLS providers before the Picotls fallback.

@@ -2,182 +2,121 @@
 
 ## Current branch
 
-main
+feature/picotls-only
 
-Current release-ready version: 0.02
+Base release: 0.02
 
-Previous CPAN release: 0.01
+Release candidate version: 0.03
 
-Release preparation PRs: #5, #6, and #7 (merged)
-Final documentation/CI polish PR: #8
+main remains the released 0.02 code.
 
-## Purpose of release 0.02
+## Current direction
 
-Alien::ngtcp2 0.01 intentionally provided only core libngtcp2.
+Alien::ngtcp2 now has one QUIC TLS backend:
 
-While designing Net::QUIC we determined that a complete QUIC connection also
-needs one of ngtcp2's TLS/crypto helper libraries. The community-facing goal is
-that Net::QUIC should install into Linux::Event, IO::Async, PAGI, or another
-Perl ecosystem without forcing that ecosystem to replace or reorganize its TLS
-stack.
+    ngtcp2 1.25.0
+        |
+        +-- libngtcp2_crypto_picotls
+                |
+                +-- Picotls
+                        |
+                        +-- OpenSSL crypto
 
-The release rule is:
+The bundled Picotls revision is:
 
-    Adapt to the host TLS ecosystem. Do not make the host adapt to us.
+    f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
 
-## Public compatibility contract
+This is the revision documented by ngtcp2 1.25.0.
 
-The original interface remains core-only:
+## Why this changed
+
+Version 0.02 could select OpenSSL, GnuTLS, BoringSSL, wolfSSL, or Picotls.
+
+That flexibility pushed all of those different TLS APIs into Net::QUIC.
+
+Net::QUIC only needs one dependable TLS implementation. Picotls is small,
+MIT licensed, designed for TLS 1.3 and QUIC, and already worked through the
+Alien fallback on Linux, macOS, and Windows.
+
+ngtcp2's native OpenSSL helper is still documented as experimental and needs
+OpenSSL 3.5 or newer.
+
+GnuTLS is mature but expensive to provide as a portable bundled dependency.
+
+AWS-LC is a strong option but much heavier to build.
+
+wolfSSL's GPLv3/commercial licensing is a poor default dependency for an MIT
+Perl transport library.
+
+## Deterministic native pair
+
+Alien::ngtcp2 no longer selects an arbitrary installed ngtcp2 TLS helper.
+
+A system libngtcp2_crypto_picotls pkg-config file records the ngtcp2 version,
+but it does not record which Picotls revision it was built against.
+
+For that reason this branch always source-builds the tested ngtcp2/Picotls
+pair.
+
+The host still supplies OpenSSL when suitable.
+
+## OpenSSL policy
+
+Picotls uses OpenSSL for crypto and X.509 handling.
+
+On Unix-like systems:
+
+- use system OpenSSL 1.1.1 or newer when available;
+- otherwise use Alien::OpenSSL.
+
+On Windows:
+
+- use the OpenSSL development tree associated with the active Perl/compiler;
+- reject OpenSSL older than 1.1.1;
+- do not silently install a second TLS stack.
+
+Historical Strawberry Perl 5.28 remains an intentional rejection because it
+contains OpenSSL 1.1.0j.
+
+## Public API
+
+These methods remain available:
 
     Alien::ngtcp2->cflags
     Alien::ngtcp2->libs
-
-New methods describe the selected QUIC crypto provider:
-
     Alien::ngtcp2->crypto_backend
     Alien::ngtcp2->crypto_package
     Alien::ngtcp2->crypto_cflags
     Alien::ngtcp2->crypto_libs
 
-Net::QUIC should consume these methods and should not expose normal users to
-backend-specific Perl objects.
+The fixed values are now:
 
-## Provider selection
+    crypto_backend = picotls
+    crypto_package = libngtcp2_crypto_picotls
 
-Automatic system preference order:
+Keeping the methods avoids an unnecessary downstream API break from 0.02.
 
-1. libngtcp2_crypto_ossl
-2. libngtcp2_crypto_gnutls
-3. libngtcp2_crypto_boringssl
-4. libngtcp2_crypto_wolfssl
-5. libngtcp2_crypto_picotls
+The ALIEN_NGTCP2_CRYPTO backend-selection environment variable is removed.
 
-The automatic policy is host TLS first. Picotls is the compatibility fallback,
-not a replacement for a suitable TLS provider already present on the host.
+## CI
 
-A system provider is accepted only together with libngtcp2 1.25.0 or newer.
+The branch keeps:
 
-Expert override:
-
-    ALIEN_NGTCP2_CRYPTO=auto
-    ALIEN_NGTCP2_CRYPTO=openssl
-    ALIEN_NGTCP2_CRYPTO=gnutls
-    ALIEN_NGTCP2_CRYPTO=boringssl
-    ALIEN_NGTCP2_CRYPTO=wolfssl
-    ALIEN_NGTCP2_CRYPTO=picotls
-
-## Source fallback
-
-If no complete system ngtcp2/provider pair exists:
-
-1. OpenSSL 3.5 or newer builds libngtcp2_crypto_ossl.
-2. Otherwise GnuTLS 3.7.5 or newer builds libngtcp2_crypto_gnutls.
-3. Otherwise OpenSSL 1.1.1 through 3.4 uses the compatibility fallback:
-
-       ngtcp2 1.25.0
-       libngtcp2_crypto_picotls
-       pinned Picotls commit
-         f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
-
-4. If no suitable host TLS stack exists, Alien::OpenSSL supplies the private
-   OpenSSL used by the same Picotls fallback.
-
-Only the MIT-licensed Picotls TLS core and OpenSSL binding are vendored. The
-minicrypto dependency tree is not included.
-
-Picotls handles TLS 1.3. OpenSSL is used for crypto and X.509 operations; this
-path does not require OpenSSL 3.5's native QUIC TLS API.
-
-On Unix-like systems a suitable system OpenSSL 1.1.1 or newer is consumed
-directly through pkg-config. Alien::OpenSSL is only required when no usable
-system OpenSSL development installation is available; it then provides the
-private fallback.
-
-On Windows the fallback deliberately uses the OpenSSL development tree attached
-to the active Perl/compiler toolchain instead of installing another OpenSSL.
-
-Picotls/ngtcp2 require OpenSSL 1.1.1 or newer. Historical Strawberry Perl 5.28
-contains OpenSSL 1.1.0j, so that specific distribution is rejected with a clear
-diagnostic. Perl 5.28 itself remains supported and is tested on a current
-Windows toolchain. Strawberry Perl 5.30 and newer meet the native baseline.
-
-Do not weaken the requirement to OpenSSL 1.1.0 merely to make legacy CI green.
-
-## Windows implementation notes
-
-The Windows fallback:
-
-- discovers the OpenSSL root from the active Perl/compiler environment;
-- uses forward-slash paths when passing libraries to CMake;
-- adds the static OpenSSL Windows link closure when needed;
-- selects the MinGW Makefiles generator when Perl uses GCC/MinGW;
-- adapts Picotls's upstream Windows compatibility shim for MinGW;
-- disables Picotls's optional OpenSSL async-signing block on Windows.
-
-The static Windows OpenSSL link closure currently includes:
-
-    ssl
-    crypto
-    ws2_32
-    gdi32
-    advapi32
-    crypt32
-    user32
-    z
-
-## Tests
-
-t/30-crypto-provider.t verifies provider metadata.
-
-t/35-crypto-xs.t is the important downstream contract test. It uses
-Alien::ngtcp2->crypto_cflags and ->crypto_libs to compile and link an actual XS
-extension against ngtcp2_crypto.h.
-
-The CI matrix tests:
-
-- Linux Perl 5.20 through 5.44, every even minor in that range;
+- Linux Perl 5.20 through 5.44, every even minor;
 - macOS Perl 5.20, 5.28, 5.36, 5.44;
 - Windows Perl 5.20, 5.28, 5.36, 5.44;
 - Strawberry Perl 5.30 and 5.42;
-- a legacy Strawberry Perl 5.28 diagnostic check;
-- minimum Alien::Build 2.84 on Linux and Windows;
-- a dedicated system-GnuTLS provider reuse job.
-
-The GnuTLS job builds ngtcp2 1.25.0 against Ubuntu's GnuTLS, forces
-ALIEN_INSTALL_TYPE=system, and must verify:
-
-    Alien::ngtcp2->install_type eq 'system'
-    Alien::ngtcp2->crypto_backend eq 'gnutls'
-
-It then runs the same XS linkage test.
-
-## CI status
-
-The adaptive-provider implementation and host-TLS-first policy were validated
-with the full matrix:
-
-- Linux Perl 5.20 through 5.44;
-- macOS Perl 5.20, 5.28, 5.36, 5.44;
-- Windows Perl 5.20, 5.28, 5.36, 5.44;
-- Strawberry Perl 5.30 and 5.42;
-- minimum Alien::Build 2.84 on Linux and Windows;
 - legacy Strawberry Perl 5.28 rejection diagnostic;
-- system GnuTLS provider reuse;
-- source-built GnuTLS helper;
-- OpenSSL before 3.5 using the Picotls compatibility fallback;
-- OpenSSL 3.5.7 using the native ngtcp2 OpenSSL helper;
-- downstream XS compile/link through crypto_cflags and crypto_libs.
+- minimum Alien::Build 2.84 on Linux and Windows;
+- disttest and CPANTS on Linux Perl 5.44.
 
-The 0.02 disttest and CPANTS lint passed before the final documentation polish.
-PR #8 reruns those release checks after simplifying the public documentation
-and correcting the general fallback CI matrix.
+The old GnuTLS/OpenSSL/provider-selection CI jobs were removed because those
+backends are no longer part of the contract.
 
 ## Next steps
 
-1. Build Alien-ngtcp2-0.02.tar.gz from main.
-2. Upload the 0.02 tarball to PAUSE.
-3. Tag/create the GitHub 0.02 release after the release artifact is confirmed.
-4. Update Net::QUIC to require Alien::ngtcp2 0.02 and consume
-   crypto_backend/crypto_cflags/crypto_libs.
-5. Net::QUIC remains event-loop neutral: frameworks own UDP sockets, readiness,
-   scheduling, and timers; Net::QUIC owns QUIC/TLS protocol state.
+1. Get the final 0.03 commit through the full CI matrix.
+2. Merge feature/picotls-only to main when that final matrix is green.
+3. Build and upload Alien-ngtcp2-0.03.tar.gz to PAUSE.
+4. Tag/create the GitHub 0.03 release after the release artifact is confirmed.
+5. Update Net::QUIC to require Alien::ngtcp2 0.03 and remove all non-Picotls TLS code.
