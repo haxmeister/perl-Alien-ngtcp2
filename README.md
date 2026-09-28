@@ -3,71 +3,73 @@
 [![CI](https://github.com/haxmeister/perl-Alien-ngtcp2/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/haxmeister/perl-Alien-ngtcp2/actions/workflows/test.yml)
 [![Perl](https://img.shields.io/badge/perl-5.20%2B-blue.svg)](https://www.perl.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![ngtcp2](https://img.shields.io/badge/ngtcp2-1.25.0%2B-blue.svg)](https://github.com/ngtcp2/ngtcp2)
+[![ngtcp2](https://img.shields.io/badge/ngtcp2-1.25.0-blue.svg)](https://github.com/ngtcp2/ngtcp2)
 
-Alien::ngtcp2 finds or builds the native ngtcp2 libraries needed by Perl QUIC
-modules.
+Alien::ngtcp2 builds the native libraries needed by Perl QUIC modules.
 
-Most users do not need to choose a TLS library. Alien::ngtcp2 checks the
-machine and uses a suitable one automatically.
+## What gets built
 
-## What gets installed
+Alien::ngtcp2 provides one tested native stack:
 
-QUIC needs two native pieces:
+    ngtcp2 1.25.0
+        |
+        +-- libngtcp2_crypto_picotls
+                |
+                +-- Picotls
+                        |
+                        +-- OpenSSL crypto
 
-- libngtcp2, which handles the QUIC protocol
-- an ngtcp2 TLS helper, which connects ngtcp2 to a TLS library
+ngtcp2 handles QUIC.
 
-If both pieces are already installed and compatible, Alien::ngtcp2 uses them.
+Picotls handles TLS 1.3.
 
-If ngtcp2 must be built from source, Alien::ngtcp2 uses the TLS software
-already on the machine when possible:
+OpenSSL supplies cryptography and X.509 certificate handling underneath
+Picotls. Net::QUIC does not use OpenSSL's QUIC TLS API.
 
-1. OpenSSL 3.5 or newer -> build the ngtcp2 OpenSSL helper
-2. otherwise GnuTLS 3.7.5 or newer -> build the ngtcp2 GnuTLS helper
-3. otherwise OpenSSL 1.1.1 through 3.4 -> use Picotls with that OpenSSL
-4. if no suitable TLS library exists on Unix -> Alien::OpenSSL can provide a
-   private OpenSSL for the Picotls fallback
+The bundled Picotls source is pinned to commit:
 
-On Windows, the fallback uses the OpenSSL that belongs to the active Perl and
-compiler toolchain. Old Windows toolchains with OpenSSL older than 1.1.1 are
-rejected instead of silently installing a different TLS stack.
+    f07f1c8c68b237f1468bc1f1fe1b68aba3ff23b4
 
-Alien::ngtcp2 does not replace or upgrade the operating system TLS library.
+That is the Picotls revision documented for ngtcp2 1.25.0.
+
+Alien::ngtcp2 builds this pair itself instead of reusing an arbitrary system
+ngtcp2 TLS helper. A system helper does not tell us which Picotls revision it
+was built against.
+
+## OpenSSL
+
+On Unix-like systems, Alien::ngtcp2 uses a system OpenSSL 1.1.1 or newer when
+one is available.
+
+If no suitable OpenSSL development installation is available,
+Alien::OpenSSL can provide one.
+
+On Windows, Alien::ngtcp2 uses the OpenSSL that belongs to the active Perl and
+compiler toolchain. It does not silently install a second TLS stack.
+
+Historical Strawberry Perl 5.28 contains OpenSSL 1.1.0j and is too old.
+Strawberry Perl 5.30 and newer meet the required baseline.
 
 ## Using it from another Perl distribution
 
-The original interface still describes the core libngtcp2 library:
+The core ngtcp2 compiler and linker flags are:
 
     use Alien::ngtcp2;
 
     my $cflags = Alien::ngtcp2->cflags;
     my $libs   = Alien::ngtcp2->libs;
 
-A QUIC distribution can also ask for the selected TLS helper:
+The TLS helper flags are:
 
-    my $backend       = Alien::ngtcp2->crypto_backend;
     my $crypto_cflags = Alien::ngtcp2->crypto_cflags;
     my $crypto_libs   = Alien::ngtcp2->crypto_libs;
 
-`crypto_backend` returns a short name such as `openssl`, `gnutls`, or
-`picotls`.
+The compatibility methods remain available:
 
-A normal Net::QUIC user should not need to call any of these methods or choose
-a backend.
+    Alien::ngtcp2->crypto_backend;  # picotls
+    Alien::ngtcp2->crypto_package;  # libngtcp2_crypto_picotls
 
-## Expert override
-
-Packagers and developers can force a backend with `ALIEN_NGTCP2_CRYPTO`:
-
-    auto
-    openssl
-    gnutls
-    boringssl
-    wolfssl
-    picotls
-
-Most users should leave this unset.
+A normal Net::QUIC user should not need to call these methods directly.
 
 ## Compatibility
 
@@ -75,23 +77,13 @@ Alien::ngtcp2 requires:
 
 - Perl 5.20 or newer
 - Alien::Build 2.84 or newer
-- libngtcp2 1.25.0 or newer when using a system copy
+- OpenSSL 1.1.1 or newer
 
 The bundled ngtcp2 source is version 1.25.0.
-
-Perl 5.28 itself is supported. Historical Strawberry Perl 5.28 is a special
-case because its bundled OpenSSL 1.1.0j is too old for the Picotls fallback.
-Strawberry Perl 5.30 and newer meet the required TLS baseline.
 
 ## Development
 
     perl Makefile.PL
-    make
-    make test
-
-To force the complete Picotls fallback while developing:
-
-    ALIEN_INSTALL_TYPE=share ALIEN_NGTCP2_CRYPTO=picotls perl Makefile.PL
     make
     make test
 
