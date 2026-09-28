@@ -4,17 +4,16 @@ use warnings;
 use Test2::V0;
 use Alien::ngtcp2;
 
-my $backend = Alien::ngtcp2->crypto_backend;
-
-ok(
-    defined($backend) && length($backend),
-    'crypto backend is selected',
+is(
+    Alien::ngtcp2->crypto_backend,
+    'picotls',
+    'Picotls is the TLS backend',
 );
 
-like(
+is(
     Alien::ngtcp2->crypto_package,
-    qr/^libngtcp2_crypto_/,
-    'crypto helper package is identified',
+    'libngtcp2_crypto_picotls',
+    'Picotls ngtcp2 helper is selected',
 );
 
 ok(
