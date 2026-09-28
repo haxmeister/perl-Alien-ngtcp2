@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use parent 'Alien::Base';
 
-our $VERSION = '0.03_001';
+our $VERSION = '0.03';
 
 sub crypto_backend {
     my ($class) = @_;
