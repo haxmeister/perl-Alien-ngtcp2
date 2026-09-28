@@ -16,13 +16,7 @@ Useful details are:
 - compiler version when relevant
 - the output from `perl Makefile.PL`
 - the output from `make` or `make test`
-
-If the problem is about which TLS library was selected, also include:
-
-    pkgconf --modversion openssl
-    pkgconf --modversion gnutls
-
-Run whichever command applies on your system.
+- the output from `pkgconf --modversion openssl` when pkgconf is available
 
 For security issues, follow SECURITY.md instead of opening a public issue.
 
@@ -36,25 +30,14 @@ A normal development build is:
     make
     make test
 
-To force a source build of ngtcp2:
+Alien::ngtcp2 deliberately builds its own ngtcp2 1.25.0 and pinned Picotls
+pair. There is no TLS-backend selection switch.
 
-    ALIEN_INSTALL_TYPE=share perl Makefile.PL
-    make
-    make test
+On Unix-like systems it reuses a suitable system OpenSSL when possible.
+Alien::OpenSSL supplies the fallback when needed.
 
-To require an already-installed system ngtcp2:
-
-    ALIEN_INSTALL_TYPE=system perl Makefile.PL
-    make
-    make test
-
-To force a particular TLS backend while testing:
-
-    ALIEN_NGTCP2_CRYPTO=openssl perl Makefile.PL
-    ALIEN_NGTCP2_CRYPTO=gnutls perl Makefile.PL
-    ALIEN_NGTCP2_CRYPTO=picotls perl Makefile.PL
-
-Most users should not set this variable.
+On Windows it uses the OpenSSL development tree associated with the active
+Perl/compiler toolchain.
 
 Before submitting a pull request, make sure the test suite passes.
 
@@ -66,7 +49,8 @@ macOS, and Windows configurations.
 Alien::ngtcp2 supplies the native pieces needed by a Perl QUIC library:
 
 - libngtcp2
-- one usable ngtcp2 TLS/crypto helper
+- libngtcp2_crypto_picotls
+- the pinned Picotls TLS core and OpenSSL binding
 
 It does not provide a Perl QUIC connection API, HTTP/3, UDP socket handling, or
 an event loop. Those belong in higher-level distributions such as Net::QUIC.
